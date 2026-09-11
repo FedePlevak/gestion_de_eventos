@@ -13,6 +13,7 @@ interface ParticipantItem {
   familyName: string;
   contactPhone?: string;
   contactEmail?: string;
+  secret?: string;
 }
 
 interface Props {
@@ -23,11 +24,18 @@ interface Props {
 export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplateType>('INVITATION');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2500);
+  };
+
+  const handleCopyLink = (link: string, id: string) => {
+    navigator.clipboard.writeText(link);
+    setCopiedLinkId(id);
+    setTimeout(() => setCopiedLinkId(null), 2500);
   };
 
   return (
@@ -86,17 +94,19 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
           {participants.map((p) => {
             const appUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+            const accessUrl = p.secret ? `${appUrl}/f#secret=${p.secret}` : `${appUrl}/f`;
             const msg = buildWhatsAppMessage(selectedTemplate, {
               recipientName: p.familyName,
               recipientPhone: p.contactPhone,
               eventName,
-              accessUrl: `${appUrl}/f`,
+              accessUrl,
               stageTitle: 'Elección del Plato Principal',
               deadlineText: '20 de Septiembre 23:59',
               amountText: '$ 3.000 UYU',
             });
 
             const isCopied = copiedId === p.id;
+            const isLinkCopied = copiedLinkId === p.id;
 
             return (
               <div
@@ -136,13 +146,21 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
                   {msg.text}
                 </div>
 
-                <div style={{ display: 'flex', gap: 'var(--spacing-2)', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: 'var(--spacing-2)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCopyLink(accessUrl, p.id)}
+                    style={{ minHeight: '30px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                  >
+                    {isLinkCopied ? '✓ ¡Enlace copiado!' : '🔗 Copiar solo link'}
+                  </Button>
+
                   <Button
                     variant="secondary"
                     onClick={() => handleCopy(msg.text, p.id)}
                     style={{ minHeight: '30px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
                   >
-                    {isCopied ? '✓ ¡Copiado!' : '📋 Copiar texto'}
+                    {isCopied ? '✓ ¡Texto copiado!' : '📋 Copiar texto'}
                   </Button>
 
                   <a

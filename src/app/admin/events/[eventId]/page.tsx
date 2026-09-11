@@ -178,6 +178,7 @@ export default function AdminEventDetailPage({ params }: PageProps) {
               familyName: 'Álvarez Pérez',
               contactPhone: '+59899123456',
               contactEmail: 'familia.alvarez@ejemplo.com',
+              secret: '746e4acf710336dddc48cc8872b4957e03e296bc25744cc4cef38085f1d9cb37',
             },
             {
               id: 'part_fam_02',
@@ -185,6 +186,7 @@ export default function AdminEventDetailPage({ params }: PageProps) {
               familyName: 'Bianchi Gómez',
               contactPhone: '+59899234567',
               contactEmail: 'familia.bianchi@ejemplo.com',
+              secret: 'd04aff7f63189262983e5ce0599645663a61d8bbf307915b5c20257d937eaee8',
             },
             {
               id: 'part_fam_03',
