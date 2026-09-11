@@ -42,6 +42,41 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  // Estados para panel visual de avance y resultados
+  const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
+  const [stageOverviewData, setStageOverviewData] = useState<Record<string, any>>({});
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<Record<string, 'breakdown' | 'responses' | 'pending'>>({});
+
+  const loadStageOverview = async (stageId: string, force = false) => {
+    if (!force && stageOverviewData[stageId]) return;
+    setOverviewLoading(true);
+    try {
+      const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}`, {
+        headers: {
+          'x-dev-organizer-email': 'organizador1@colegio.edu.uy',
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStageOverviewData((prev) => ({ ...prev, [stageId]: data }));
+      }
+    } catch (err) {
+      console.error('Error al cargar panel de avance:', err);
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
+  const handleToggleOverview = (stageId: string) => {
+    if (expandedStageId === stageId) {
+      setExpandedStageId(null);
+    } else {
+      setExpandedStageId(stageId);
+      loadStageOverview(stageId);
+    }
+  };
+
   // Sincronizar etapas reales si existen en base de datos
   useEffect(() => {
     const fetchStages = async () => {
@@ -513,6 +548,22 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
 
               {/* Botones de acción administrativa */}
               <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap', marginTop: 'var(--spacing-2)' }}>
+                <Button
+                  variant={expandedStageId === stage.id ? 'secondary' : 'primary'}
+                  onClick={() => handleToggleOverview(stage.id)}
+                  style={{
+                    minHeight: '32px',
+                    padding: '0.25rem 0.75rem',
+                    fontSize: 'var(--font-size-xs)',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                  }}
+                >
+                  {expandedStageId === stage.id ? '✕ Ocultar panel de avance' : '📊 Ver avance y votación en vivo'}
+                </Button>
+
                 {stage.status === 'open' ? (
                   <Button
                     variant="outline"
@@ -570,6 +621,244 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                   Ocultar publicación
                 </Button>
               </div>
+
+              {/* Panel Visual de Avance y Votación en Vivo */}
+              {expandedStageId === stage.id && (
+                <div
+                  style={{
+                    marginTop: 'var(--spacing-3)',
+                    padding: 'var(--spacing-4)',
+                    backgroundColor: 'var(--color-surface-subtle)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--spacing-3)',
+                  }}
+                >
+                  {overviewLoading && !stageOverviewData[stage.id] ? (
+                    <div style={{ textAlign: 'center', color: 'var(--color-text-subtle)', padding: 'var(--spacing-3)', fontSize: 'var(--font-size-sm)' }}>
+                      ⏳ Cargando datos en vivo de participación y votación...
+                    </div>
+                  ) : stageOverviewData[stage.id] ? (
+                    (() => {
+                      const overview = stageOverviewData[stage.id];
+                      const currentTab = activeTab[stage.id] || 'breakdown';
+
+                      return (
+                        <>
+                          {/* Encabezado con métricas y barra de progreso */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
+                            <div>
+                              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                                Participación General
+                              </span>
+                              <p style={{ fontSize: 'var(--font-size-base)', fontWeight: 800, color: 'var(--color-primary)', margin: '0.1rem 0' }}>
+                                {overview.totalResponded} de {overview.totalEligible} familias respondieron ({overview.responseRatePercentage}%)
+                              </p>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
+                              <Badge variant={overview.isPublished ? 'success' : 'neutral'}>
+                                {overview.isPublished ? '📢 Visible para familias' : '🔒 Privado (Solo comité)'}
+                              </Badge>
+                              <Button
+                                variant="outline"
+                                onClick={() => loadStageOverview(stage.id, true)}
+                                disabled={overviewLoading}
+                                style={{ fontSize: 'var(--font-size-xs)', padding: '0.2rem 0.6rem', minHeight: '28px' }}
+                              >
+                                🔄 Actualizar
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Barra de progreso de participación */}
+                          <div style={{ width: '100%', height: '10px', backgroundColor: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                width: `${overview.responseRatePercentage}%`,
+                                height: '100%',
+                                backgroundColor: 'var(--color-primary)',
+                                transition: 'width 0.4s ease',
+                              }}
+                            />
+                          </div>
+
+                          {/* Selector de pestañas */}
+                          <div style={{ display: 'flex', gap: 'var(--spacing-2)', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--spacing-2)', marginTop: 'var(--spacing-1)', flexWrap: 'wrap' }}>
+                            <Button
+                              variant={currentTab === 'breakdown' ? 'primary' : 'outline'}
+                              onClick={() => setActiveTab((prev) => ({ ...prev, [stage.id]: 'breakdown' }))}
+                              style={{ fontSize: 'var(--font-size-xs)', padding: '0.25rem 0.6rem', minHeight: '30px' }}
+                            >
+                              📊 Conteo de Opciones
+                            </Button>
+                            <Button
+                              variant={currentTab === 'responses' ? 'primary' : 'outline'}
+                              onClick={() => setActiveTab((prev) => ({ ...prev, [stage.id]: 'responses' }))}
+                              style={{ fontSize: 'var(--font-size-xs)', padding: '0.25rem 0.6rem', minHeight: '30px' }}
+                            >
+                              👥 Familias que votaron ({overview.familyResponsesList.length})
+                            </Button>
+                            <Button
+                              variant={currentTab === 'pending' ? 'primary' : 'outline'}
+                              onClick={() => setActiveTab((prev) => ({ ...prev, [stage.id]: 'pending' }))}
+                              style={{ fontSize: 'var(--font-size-xs)', padding: '0.25rem 0.6rem', minHeight: '30px' }}
+                            >
+                              ⏳ Familias pendientes ({overview.pendingFamilies.length})
+                            </Button>
+                          </div>
+
+                          {/* Pestaña 1: Conteo de opciones */}
+                          {currentTab === 'breakdown' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+                              {overview.totalResponded === 0 ? (
+                                <div style={{ padding: 'var(--spacing-3)', textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: 'var(--font-size-sm)' }}>
+                                  Aún no se han recibido votos para esta consulta.
+                                </div>
+                              ) : (
+                                overview.breakdown.map((item: any) => (
+                                  <div
+                                    key={item.optionId}
+                                    style={{
+                                      backgroundColor: 'var(--color-surface)',
+                                      padding: 'var(--spacing-3)',
+                                      borderRadius: 'var(--radius-md)',
+                                      border: '1px solid var(--color-border)',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: 'var(--spacing-2)',
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span style={{ fontWeight: 700, fontSize: 'var(--font-size-sm)' }}>{item.label}</span>
+                                      <span style={{ fontWeight: 800, fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
+                                        {item.count} voto{item.count === 1 ? '' : 's'} ({item.percentage}%)
+                                      </span>
+                                    </div>
+
+                                    <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
+                                      <div
+                                        style={{
+                                          width: `${item.percentage}%`,
+                                          height: '100%',
+                                          backgroundColor: item.count > 0 ? 'var(--color-primary)' : 'transparent',
+                                          transition: 'width 0.4s ease',
+                                        }}
+                                      />
+                                    </div>
+
+                                    {item.familyNames && item.familyNames.length > 0 && (
+                                      <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>Votaron:</span>
+                                        {item.familyNames.map((fn: string, i: number) => (
+                                          <span
+                                            key={i}
+                                            style={{
+                                              fontSize: 'var(--font-size-xs)',
+                                              backgroundColor: 'var(--color-surface-subtle)',
+                                              border: '1px solid var(--color-border)',
+                                              borderRadius: 'var(--radius-sm)',
+                                              padding: '0.1rem 0.4rem',
+                                            }}
+                                          >
+                                            Familia {fn}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {/* Pestaña 2: Respuestas detalladas por familia */}
+                          {currentTab === 'responses' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+                              {overview.familyResponsesList.length === 0 ? (
+                                <div style={{ padding: 'var(--spacing-3)', textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: 'var(--font-size-sm)' }}>
+                                  Ninguna familia ha respondido todavía.
+                                </div>
+                              ) : (
+                                overview.familyResponsesList.map((resp: any) => (
+                                  <div
+                                    key={resp.participantId}
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      padding: 'var(--spacing-2) var(--spacing-3)',
+                                      backgroundColor: 'var(--color-surface)',
+                                      border: '1px solid var(--color-border)',
+                                      borderRadius: 'var(--radius-md)',
+                                      flexWrap: 'wrap',
+                                      gap: 'var(--spacing-2)',
+                                    }}
+                                  >
+                                    <div>
+                                      <strong style={{ fontSize: 'var(--font-size-sm)' }}>Familia {resp.familyName}</strong>
+                                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', display: 'block' }}>
+                                        {new Date(resp.submittedAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })} · Versión {resp.version}
+                                      </span>
+                                    </div>
+
+                                    <Badge variant="info">
+                                      {resp.answersText}
+                                    </Badge>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {/* Pestaña 3: Familias pendientes */}
+                          {currentTab === 'pending' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+                              {overview.pendingFamilies.length === 0 ? (
+                                <div style={{ padding: 'var(--spacing-3)', textAlign: 'center', color: 'var(--color-success-text)', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                                  🎉 ¡Todas las familias convocadas han respondido esta consulta!
+                                </div>
+                              ) : (
+                                overview.pendingFamilies.map((fam: any) => (
+                                  <div
+                                    key={fam.id}
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      padding: 'var(--spacing-2) var(--spacing-3)',
+                                      backgroundColor: 'var(--color-surface)',
+                                      border: '1px solid var(--color-border)',
+                                      borderRadius: 'var(--radius-md)',
+                                      flexWrap: 'wrap',
+                                      gap: 'var(--spacing-2)',
+                                    }}
+                                  >
+                                    <div>
+                                      <strong style={{ fontSize: 'var(--font-size-sm)' }}>Familia {fam.familyName}</strong>
+                                      {fam.contactPhone && (
+                                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', display: 'block' }}>
+                                          📱 {fam.contactPhone}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <Badge variant="neutral">
+                                      Pendiente
+                                    </Badge>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()
+                  ) : null}
+                </div>
+              )}
 
               {/* Formulario de acción desplegado */}
               {isEditingThis && actionType && (
