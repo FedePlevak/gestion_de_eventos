@@ -10,9 +10,9 @@ const envSchema = z.object({
   FIREBASE_PRIVATE_KEY: z.string().optional(),
   FIREBASE_STORAGE_BUCKET: z.string().optional().default('gestion-eventos-dev.appspot.com'),
 
-  NEXT_PUBLIC_FIREBASE_API_KEY: z.string().optional().default('dev-api-key'),
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().optional().default('localhost'),
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().optional().default('gestion-eventos-dev'),
+  NEXT_PUBLIC_FIREBASE_API_KEY: z.string().optional().default('AIzaSyDZnSikyO2dJKFfCJhGRpkEORPh9LIsAdQ'),
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().optional().default('gestion-eventos-9846f.firebaseapp.com'),
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().optional().default('gestion-eventos-9846f'),
 
   FIRESTORE_EMULATOR_HOST: z.string().optional(),
   FIREBASE_AUTH_EMULATOR_HOST: z.string().optional(),

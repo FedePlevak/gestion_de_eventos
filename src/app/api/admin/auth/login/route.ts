@@ -15,14 +15,10 @@ export async function POST(request: NextRequest) {
     }
 
     const env = getEnv();
-    const apiKey = env.NEXT_PUBLIC_FIREBASE_API_KEY;
-
-    if (!apiKey || apiKey === 'dev-api-key') {
-      return NextResponse.json(
-        { error: 'La clave de autenticación no está configurada en el servidor.' },
-        { status: 500 }
-      );
-    }
+    const apiKey =
+      env.NEXT_PUBLIC_FIREBASE_API_KEY && env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'dev-api-key'
+        ? env.NEXT_PUBLIC_FIREBASE_API_KEY
+        : 'AIzaSyDZnSikyO2dJKFfCJhGRpkEORPh9LIsAdQ';
 
     // Autenticar contra Firebase Identity Toolkit
     const verifyRes = await fetch(
