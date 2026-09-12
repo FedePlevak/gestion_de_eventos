@@ -12,6 +12,7 @@ import { SupportAdminSection } from './SupportAdminSection';
 import { ExportAdminSection } from './ExportAdminSection';
 import { ParticipantImportSection } from './ParticipantImportSection';
 import { OrganizerTeamSection } from './OrganizerTeamSection';
+import { DeleteEventSection } from './DeleteEventSection';
 
 interface PageProps {
   params: {
@@ -205,6 +206,14 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
 
         {/* Sección 7: Exportación y Descarga de Planillas (RFC 4180 / Excel UTF-8 BOM) */}
         <ExportAdminSection eventId={params.eventId} />
+
+        {/* Sección 8: Zona de Peligro - Eliminar Evento con Doble Verificación */}
+        <DeleteEventSection
+          eventId={params.eventId}
+          eventName={eventName}
+          stageCount={stages.length}
+          participantCount={participants.length}
+        />
       </main>
     </div>
   );
