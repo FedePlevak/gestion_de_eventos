@@ -8,6 +8,7 @@ import { getAdminDb } from '@/server/firebase-admin';
 import { Header } from '@/components/Header';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
+import { StageCountdown } from '@/components/StageCountdown';
 import { StageClientInteraction } from './StageClientInteraction';
 import { StagePublishedResults } from './StagePublishedResults';
 import { getPublishedResultsForFamily } from '@/modules/results/service';
@@ -144,6 +145,18 @@ export default async function FamilyStageDetailPage({ params }: PageProps) {
             </p>
           )}
         </section>
+
+        {/* Cuenta regresiva en vivo first-mobile */}
+        {stage.deadlineAt && (
+          <div style={{ marginTop: 'var(--spacing-3)', marginBottom: 'var(--spacing-2)' }}>
+            <StageCountdown
+              deadlineAt={stage.deadlineAt}
+              isClosed={isClosed}
+              variant="detail"
+              timezone={stage.timezone}
+            />
+          </div>
+        )}
 
         {/* Aclaraciones del comité organizador si existen (Regla E14) */}
         {stage.clarifications && stage.clarifications.length > 0 && (

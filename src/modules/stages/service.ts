@@ -427,7 +427,13 @@ export async function updateStageAdmin(
   data: any
 ): Promise<void> {
   await validateOrganizerEventAccess(organizer, eventId, organizer.workspaceId);
-  const parsed = AdminUpdateStageSchema.parse(data);
+  let parsed;
+  try {
+    parsed = AdminUpdateStageSchema.parse(data);
+  } catch (zodError: any) {
+    const errorMsg = zodError.errors?.[0]?.message || 'Datos de etapa inválidos';
+    throw new ValidationError(errorMsg, errorMsg);
+  }
 
   const db = getAdminDb();
   const stageRef = db
@@ -446,11 +452,20 @@ export async function updateStageAdmin(
 
     const stage = stageSnap.data() as StageModel;
 
-    // Regla E09: Desde la primera respuesta o lectura confirmada, se rechaza cambiar el contenido semántico
-    if (stage.isSemanticallyLocked) {
-      if (parsed.options !== undefined) {
+    // Regla E09: Desde la primera respuesta o lectura confirmada, se protegen las opciones semánticas
+    if (stage.isSemanticallyLocked && parsed.options !== undefined) {
+      const currentOptions = stage.options || [];
+      const hasOptionsChanged =
+        parsed.options.length !== currentOptions.length ||
+        parsed.options.some((opt, idx) => {
+          const curr = currentOptions[idx];
+          return !curr || opt.id !== curr.id || opt.label.trim() !== curr.label.trim();
+        });
+
+      if (hasOptionsChanged) {
         throw new ValidationError(
-          'No se pueden cambiar las opciones porque ya se recibieron respuestas de familias. Para cambiar el significado, duplicá la etapa como borrador.'
+          'No se pueden cambiar las opciones porque ya se recibieron respuestas de familias. Para cambiar las opciones o el significado, creá una nueva etapa.',
+          'No se pueden cambiar las opciones porque ya se recibieron respuestas de familias. Podés prorrogar la fecha y hora de cierre o modificar el título/descripción.'
         );
       }
     }

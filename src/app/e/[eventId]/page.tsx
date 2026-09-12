@@ -7,6 +7,7 @@ import { getAdminDb } from '@/server/firebase-admin';
 import { Header } from '@/components/Header';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
+import { StageCountdown } from '@/components/StageCountdown';
 import { FamilySupportSection } from './FamilySupportSection';
 import { EventModel } from '@/modules/events/types';
 
@@ -184,9 +185,12 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                         <Card
                           title={stage.title}
                           subtitle={
-                            stage.deadlineAt
-                              ? `Cierre: ${new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}`
-                              : undefined
+                            stage.deadlineAt ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '2px' }}>
+                                <span>📅 Cierre: {new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                <StageCountdown deadlineAt={stage.deadlineAt} isClosed={stage.isClosed} variant="compact" />
+                              </div>
+                            ) : undefined
                           }
                           action={badgeElement}
                         >

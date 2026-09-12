@@ -37,8 +37,13 @@ export class ConflictError extends AppError {
 }
 
 export class ValidationError extends AppError {
-  constructor(message = 'Datos inválidos', userMessage = 'Por favor revisá los datos ingresados e intentá nuevamente.') {
-    super(message, 'VALIDATION_ERROR', 400, userMessage);
+  constructor(message = 'Datos inválidos', userMessage?: string) {
+    super(
+      message,
+      'VALIDATION_ERROR',
+      400,
+      userMessage || (message !== 'Datos inválidos' ? message : 'Por favor revisá los datos ingresados e intentá nuevamente.')
+    );
   }
 }
 

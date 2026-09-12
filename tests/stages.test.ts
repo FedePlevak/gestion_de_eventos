@@ -314,6 +314,28 @@ describe('Incremento 2: Criterios de Aceptación de Etapas y Respuestas', () => 
       const updated = memoryStore.get('workspaces/ws_colegio/events/evento_fiesta_2026/stages/stage_menu_bloqueado');
       expect(updated.title).toBe('Elección de Menú (Plazo Extendido)');
     });
+
+    it('debe permitir actualizar fecha y hora de vencimiento aun si se envían las opciones originales sin modificar', async () => {
+      const futureDate = new Date(Date.now() + 86400000).toISOString();
+      memoryStore.set('workspaces/ws_colegio/events/evento_fiesta_2026/stages/stage_menu_bloqueado_2', {
+        id: 'stage_menu_bloqueado_2',
+        title: 'Elección de Fecha',
+        type: 'single_choice',
+        status: 'open',
+        visibility: 'visible',
+        isSemanticallyLocked: true,
+        options: [{ id: 'opt_1', label: 'Opción 1' }],
+      });
+
+      // El organizador actualiza deadlineAt y envía las opciones originales
+      await updateStageAdmin(organizerSession, 'evento_fiesta_2026', 'stage_menu_bloqueado_2', {
+        deadlineAt: futureDate,
+        options: [{ id: 'opt_1', label: 'Opción 1' }],
+      });
+
+      const updated = memoryStore.get('workspaces/ws_colegio/events/evento_fiesta_2026/stages/stage_menu_bloqueado_2');
+      expect(updated.deadlineAt).toBe(futureDate);
+    });
   });
 
   describe('Criterio E11: Reapertura de etapas', () => {

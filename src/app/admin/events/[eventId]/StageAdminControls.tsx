@@ -5,6 +5,7 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Badge } from '@/components/Badge';
+import { StageCountdown } from '@/components/StageCountdown';
 
 export interface StageSummary {
   id: string;
@@ -214,7 +215,18 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     setEditingStageId(stage.id);
     setEditTitle(stage.title);
     setEditDescription(stage.description || '');
-    setEditDeadline(stage.deadlineAt ? new Date(stage.deadlineAt).toISOString().slice(0, 16) : '');
+
+    // Formatear correctamente la fecha local para el input datetime-local (YYYY-MM-DDTHH:mm)
+    let localIso = '';
+    if (stage.deadlineAt) {
+      const d = new Date(stage.deadlineAt);
+      if (!isNaN(d.getTime())) {
+        const tzOffset = d.getTimezoneOffset() * 60000;
+        const localTime = new Date(d.getTime() - tzOffset);
+        localIso = localTime.toISOString().slice(0, 16);
+      }
+    }
+    setEditDeadline(localIso);
     setEditOptions(stage.options ? stage.options.map((o) => o.label) : ['Opción A', 'Opción B']);
     setEditError(null);
     setActiveActionStageId(null);
@@ -254,12 +266,24 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     setEditError(null);
 
     try {
+      let deadlineIso: string | null = null;
+      if (editDeadline && editDeadline.trim()) {
+        const d = new Date(editDeadline.trim());
+        if (isNaN(d.getTime())) {
+          setEditError('La fecha y hora de vencimiento ingresada no es válida.');
+          setEditLoading(false);
+          return;
+        }
+        deadlineIso = d.toISOString();
+      }
+
       const payload: any = {
         title: editTitle.trim(),
         description: editDescription.trim() || undefined,
-        deadlineAt: editDeadline ? new Date(editDeadline).toISOString() : null,
+        deadlineAt: deadlineIso,
       };
 
+      // Solo enviar options si la etapa NO está bloqueada semánticamente Y las opciones cambiaron
       if (!currentStage.isSemanticallyLocked && (currentStage.type === 'single_choice' || currentStage.type === 'multiple_choice')) {
         const valid = editOptions.map((o) => o.trim()).filter(Boolean);
         if (valid.length < 2) {
@@ -267,10 +291,17 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
           setEditLoading(false);
           return;
         }
-        payload.options = valid.map((label, idx) => ({
-          id: currentStage.options?.[idx]?.id || `opt_${Date.now()}_${idx + 1}`,
-          label,
-        }));
+
+        const originalLabels = (currentStage.options || []).map((o) => o.label.trim());
+        const hasOptionsChanged =
+          valid.length !== originalLabels.length || valid.some((v, i) => v !== originalLabels[i]);
+
+        if (hasOptionsChanged) {
+          payload.options = valid.map((label, idx) => ({
+            id: currentStage.options?.[idx]?.id || `opt_${Date.now()}_${idx + 1}`,
+            label,
+          }));
+        }
       }
 
       const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}`, {
@@ -624,9 +655,14 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
             key={stage.id}
             title={stage.title}
             subtitle={
-              stage.deadlineAt
-                ? `Cierre: ${new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}`
-                : 'Sin fecha límite fija (cierre manual)'
+              stage.deadlineAt ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '2px' }}>
+                  <span>📅 Cierre: {new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                  <StageCountdown deadlineAt={stage.deadlineAt} isClosed={stage.status === 'closed'} variant="compact" />
+                </div>
+              ) : (
+                'Sin fecha límite fija (cierre manual)'
+              )
             }
             action={
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
