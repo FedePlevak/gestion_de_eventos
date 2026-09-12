@@ -79,7 +79,7 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
     contactEmail: d.data().contactEmail,
     classCode: d.data().classCode || undefined,
     customFields: d.data().customFields || undefined,
-    secret: d.data().tokenHash,
+    secret: d.data().accessSecret || d.data().tokenHash,
   }));
 
   // 3. Obtener pagos

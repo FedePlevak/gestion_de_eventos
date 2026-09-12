@@ -363,7 +363,11 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
                     fontSize: 'var(--font-size-xs)',
                     color: 'var(--color-text-main)',
                     whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
                     fontFamily: 'monospace',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
                   }}
                 >
                   {msg.text}

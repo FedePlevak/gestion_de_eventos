@@ -17,11 +17,21 @@ export async function redeemFamilySecret(secret: string): Promise<{
     throw new UnauthorizedError('El enlace es inválido o está incompleto.');
   }
 
-  const tokenHash = hashFamilySecret(secret.trim());
+  const cleanSecret = secret.trim();
+  const tokenHash = hashFamilySecret(cleanSecret);
   const db = getAdminDb();
 
-  // Buscar token indexado
-  const tokenDoc = await db.collection('access_tokens').doc(tokenHash).get();
+  // 1. Buscar token indexado por hash HMAC
+  let tokenDoc = await db.collection('access_tokens').doc(tokenHash).get();
+
+  // 2. Si no existe por HMAC, verificar si el enlace trajo directamente el identificador de token
+  if (!tokenDoc.exists) {
+    const directDoc = await db.collection('access_tokens').doc(cleanSecret).get();
+    if (directDoc.exists) {
+      tokenDoc = directDoc;
+    }
+  }
+
   if (!tokenDoc.exists) {
     throw new UnauthorizedError('El enlace no es válido o ya fue reemplazado.');
   }

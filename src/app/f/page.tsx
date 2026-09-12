@@ -46,15 +46,44 @@ export default function FamilyAccessPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    let secretToProcess: string | null = null;
+
+    // 1. Intentar desde el hash de la URL (#secret=XYZ o #XYZ)
     const hash = window.location.hash.substring(1);
     if (hash) {
-      const params = new URLSearchParams(hash);
-      const secret = params.get('secret') || hash.replace('secret=', '');
-      if (secret) {
-        processSecret(secret);
+      if (hash.includes('secret=')) {
+        const params = new URLSearchParams(hash);
+        secretToProcess = params.get('secret');
+      } else {
+        secretToProcess = hash;
       }
     }
+
+    // 2. Intentar desde parámetros de consulta (?secret=XYZ)
+    if (!secretToProcess) {
+      const queryParams = new URLSearchParams(window.location.search);
+      secretToProcess = queryParams.get('secret');
+    }
+
+    if (secretToProcess) {
+      processSecret(secretToProcess);
+    }
   }, []);
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualSecret.trim()) return;
+
+    let clean = manualSecret.trim();
+    // Si pegaron una URL completa, extraer el secreto
+    if (clean.includes('secret=')) {
+      clean = clean.split('secret=')[1].split('&')[0];
+    } else if (clean.includes('#')) {
+      clean = clean.split('#')[1];
+    }
+
+    processSecret(clean);
+  };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -92,10 +121,7 @@ export default function FamilyAccessPage() {
               </p>
 
               <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (manualSecret) processSecret(manualSecret);
-                }}
+                onSubmit={handleManualSubmit}
                 style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}
               >
                 <Input

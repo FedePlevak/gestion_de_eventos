@@ -73,6 +73,7 @@ export async function POST(
           status: 'active',
           accessVersion: 1,
           tokenHash,
+          accessSecret: rawSecret,
           createdAt: now,
           updatedAt: now,
         };
@@ -84,7 +85,6 @@ export async function POST(
           partData.customFields = customFields;
         }
 
-        const tokenRef = db.collection('access_tokens').doc(tokenHash);
         const tokenData = {
           workspaceId,
           eventId: params.eventId,
@@ -92,6 +92,15 @@ export async function POST(
           accessVersion: 1,
           createdAt: now,
         };
+
+        const tokenRef = db.collection('access_tokens').doc(tokenHash);
+        batch.set(tokenRef, tokenData);
+
+        // Si rawSecret difiere del hash, registrar también puntero directo para máxima compatibilidad
+        if (rawSecret !== tokenHash) {
+          const rawTokenRef = db.collection('access_tokens').doc(rawSecret);
+          batch.set(rawTokenRef, tokenData);
+        }
 
         batch.set(partRef, partData);
         batch.set(tokenRef, tokenData);

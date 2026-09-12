@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -26,6 +27,7 @@ interface ExtraColumnMapping {
 }
 
 export function ParticipantImportSection({ eventId, onImportComplete }: ParticipantImportSectionProps) {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload');
   
@@ -307,6 +309,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
       setExtraMappings([]);
       setFileName(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      router.refresh();
       if (onImportComplete) onImportComplete();
     } catch (err: any) {
       setFeedback({
@@ -352,6 +355,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
       setManualClassCode('');
       setManualPhone('');
       setManualEmail('');
+      router.refresh();
       if (onImportComplete) onImportComplete();
     } catch (err: any) {
       setFeedback({
