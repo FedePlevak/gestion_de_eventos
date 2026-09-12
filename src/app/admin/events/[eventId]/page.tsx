@@ -1,18 +1,8 @@
 import React from 'react';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Header } from '@/components/Header';
-import { Card } from '@/components/Card';
-import { Badge } from '@/components/Badge';
 import { getAdminDb } from '@/server/firebase-admin';
-import { StageAdminControls } from './StageAdminControls';
-import { PaymentAdminSection } from './PaymentAdminSection';
-import { WhatsAppAdminSection } from './WhatsAppAdminSection';
-import { SupportAdminSection } from './SupportAdminSection';
-import { ExportAdminSection } from './ExportAdminSection';
-import { ParticipantImportSection } from './ParticipantImportSection';
-import { OrganizerTeamSection } from './OrganizerTeamSection';
-import { DeleteEventSection } from './DeleteEventSection';
+import { OrganizerEventTabs } from './OrganizerEventTabs';
 
 interface PageProps {
   params: {
@@ -141,63 +131,13 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header eventName={eventName} isOrganizer />
       <main className="app-container">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
-          <Link
-            href="/admin"
-            style={{
-              fontSize: 'var(--font-size-sm)',
-              color: 'var(--color-primary)',
-              fontWeight: 600,
-            }}
-          >
-            ← Volver a mis eventos
-          </Link>
-        </div>
-
-        {/* Resumen del evento */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-          <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)' }}>
-            {eventName}
-          </h2>
-          {eventData.description && (
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-              {eventData.description}
-            </p>
-          )}
-          <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
-            <Badge variant="success">Activo</Badge>
-            <Badge variant="neutral">Zona: {eventData.timezone || 'America/Montevideo'}</Badge>
-            <Badge variant="info">{participants.length} Familias convocadas</Badge>
-            {eventData.eventDate && (
-              <Badge variant="neutral">
-                Fecha: {new Date(eventData.eventDate).toLocaleDateString('es-UY', { dateStyle: 'medium' })}
-              </Badge>
-            )}
-          </div>
-        </section>
-
-        {/* Sección 1: Convocatoria e Importación de Familias (Excel/CSV y manual) */}
-        <ParticipantImportSection eventId={params.eventId} />
-
-        {/* Sección 2: Equipo Organizador del Evento */}
-        <OrganizerTeamSection eventId={params.eventId} />
-
-        {/* Sección 3: Etapas del Evento y Votación en Vivo */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>Consultas y Etapas del Evento</h3>
-          </div>
-
-          <StageAdminControls eventId={params.eventId} initialStages={stages} />
-        </section>
-
-        {/* Sección 4: Asistente de Comunicación y Enlaces WhatsApp */}
-        <WhatsAppAdminSection eventName={eventName} participants={participants} />
-
-        {/* Sección 5: Etapa de Aporte o Cuota Financiera (Control de Visibilidad y Estado) */}
-        <PaymentAdminSection
+        <OrganizerEventTabs
           eventId={params.eventId}
-          initialConfig={{
+          eventName={eventName}
+          eventData={eventData}
+          stages={stages}
+          participants={participants}
+          paymentConfig={{
             enabled: Boolean(config.enabled),
             expectedAmountMinor: config.expectedAmountMinor || 0,
             currency: config.currency || 'UYU',
@@ -205,20 +145,7 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
           }}
           initialSummary={initialSummary}
           initialPayments={initialPayments}
-        />
-
-        {/* Sección 6: Mesa de Ayuda y Consultas Familiares */}
-        <SupportAdminSection eventId={params.eventId} initialTickets={initialTickets} />
-
-        {/* Sección 7: Exportación y Descarga de Planillas (RFC 4180 / Excel UTF-8 BOM) */}
-        <ExportAdminSection eventId={params.eventId} />
-
-        {/* Sección 8: Zona de Peligro - Eliminar Evento con Doble Verificación */}
-        <DeleteEventSection
-          eventId={params.eventId}
-          eventName={eventName}
-          stageCount={stages.length}
-          participantCount={participants.length}
+          initialTickets={initialTickets}
         />
       </main>
     </div>

@@ -18,7 +18,7 @@ export const Input: React.FC<InputProps> = ({
   const inputId = id || `input-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <label
         htmlFor={inputId}
         style={{
@@ -32,6 +32,10 @@ export const Input: React.FC<InputProps> = ({
       <input
         id={inputId}
         style={{
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          minWidth: 0,
           minHeight: 'var(--touch-target-min)',
           padding: '0.75rem',
           borderRadius: 'var(--radius-md)',

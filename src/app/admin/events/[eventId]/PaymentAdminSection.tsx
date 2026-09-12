@@ -57,10 +57,18 @@ export const PaymentAdminSection: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const filteredItems = payments.filter((item) => {
     const status = item.payment?.status || 'pending';
-    if (filter === 'all') return true;
-    return status === filter;
+    if (filter !== 'all' && status !== filter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = item.familyName.toLowerCase().includes(q);
+      const matchEmail = item.contactEmail ? item.contactEmail.toLowerCase().includes(q) : false;
+      return matchName || matchEmail;
+    }
+    return true;
   });
 
   const handleExecuteAction = async (participantId: string) => {
@@ -511,6 +519,28 @@ export const PaymentAdminSection: React.FC<Props> = ({
         </div>
       )}
 
+      {/* Buscador de familias en pagos */}
+      <div style={{ width: '100%' }}>
+        <input
+          type="text"
+          placeholder="🔍 Buscar por apellido de familia o correo..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            minHeight: 'var(--touch-target-min)',
+            padding: '0.65rem 0.85rem',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+            fontSize: 'var(--font-size-sm)',
+            backgroundColor: 'var(--color-surface)',
+            color: 'var(--color-text-main)',
+          }}
+        />
+      </div>
+
       {/* Filtros de lista */}
       <div style={{ display: 'flex', gap: 'var(--spacing-2)', overflowX: 'auto', paddingBottom: 'var(--spacing-1)' }}>
         <Button
@@ -546,7 +576,12 @@ export const PaymentAdminSection: React.FC<Props> = ({
       {/* Lista de Familias y Pagos */}
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-          {filteredItems.map((item) => {
+          {filteredItems.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: 'var(--font-size-sm)', padding: 'var(--spacing-4)' }}>
+              No se encontraron familias que coincidan con la búsqueda o el filtro seleccionado.
+            </p>
+          ) : (
+            filteredItems.map((item) => {
             const p = item.payment;
             const status = p?.status || 'pending';
             const isEditing = activeParticipantId === item.id;
@@ -649,27 +684,41 @@ export const PaymentAdminSection: React.FC<Props> = ({
                   )}
                 </div>
 
-                {/* Formulario de acción desplegado */}
+                {/* Formulario de acción desplegado (Mobile-First) */}
                 {isEditing && activeAction && (
                   <div
                     style={{
                       padding: 'var(--spacing-3)',
-                      backgroundColor: 'var(--color-surface-subtle)',
+                      backgroundColor: 'var(--color-surface)',
+                      border: '1.5px solid var(--color-primary)',
                       borderRadius: 'var(--radius-md)',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 'var(--spacing-2)',
-                      marginTop: 'var(--spacing-1)',
+                      gap: 'var(--spacing-3)',
+                      marginTop: 'var(--spacing-2)',
+                      width: '100%',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
-                      {activeAction === 'verify' && 'Confirmar recepción verificada:'}
-                      {activeAction === 'request_revision' && 'Solicitar corrección a la familia (motivo visible):'}
-                      {activeAction === 'reverse' && 'Revertir verificación (motivo obligatorio):'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)' }}>
+                      <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
+                        {activeAction === 'verify' && '✓ Confirmar recepción de pago:'}
+                        {activeAction === 'request_revision' && '⚠️ Solicitar corrección a la familia:'}
+                        {activeAction === 'reverse' && '↺ Revertir verificación:'}
+                      </span>
+                    </div>
 
                     {activeAction === 'verify' && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-2)' }}>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                          gap: 'var(--spacing-3)',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                        }}
+                      >
                         <Input
                           label="Importe recibido ($)"
                           type="number"
@@ -701,14 +750,22 @@ export const PaymentAdminSection: React.FC<Props> = ({
                       />
                     )}
 
-                    <div style={{ display: 'flex', gap: 'var(--spacing-2)', justifyContent: 'flex-end' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 'var(--spacing-2)',
+                        justifyContent: 'flex-end',
+                        flexWrap: 'wrap',
+                        marginTop: 'var(--spacing-1)',
+                      }}
+                    >
                       <Button
                         variant="secondary"
                         onClick={() => {
                           setActiveParticipantId(null);
                           setActiveAction(null);
                         }}
-                        style={{ minHeight: '30px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                        style={{ minHeight: '38px', padding: '0.4rem 0.9rem', fontSize: 'var(--font-size-xs)' }}
                       >
                         Cancelar
                       </Button>
@@ -716,7 +773,7 @@ export const PaymentAdminSection: React.FC<Props> = ({
                         variant="primary"
                         isLoading={loading}
                         onClick={() => handleExecuteAction(item.id)}
-                        style={{ minHeight: '30px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                        style={{ minHeight: '38px', padding: '0.4rem 1.1rem', fontSize: 'var(--font-size-xs)' }}
                       >
                         Confirmar
                       </Button>
@@ -725,7 +782,7 @@ export const PaymentAdminSection: React.FC<Props> = ({
                 )}
               </div>
             );
-          })}
+          }))}
         </div>
       </Card>
     </section>
