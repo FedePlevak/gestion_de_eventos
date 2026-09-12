@@ -59,7 +59,10 @@ export async function POST(
         const rawSecret = generateRawSecret();
         const tokenHash = hashFamilySecret(rawSecret);
 
-        const partData = {
+        const classCode = item.classCode ? String(item.classCode).trim() : undefined;
+        const customFields = item.customFields && typeof item.customFields === 'object' ? item.customFields : undefined;
+
+        const partData: any = {
           id: partRef.id,
           workspaceId,
           eventId: params.eventId,
@@ -73,6 +76,13 @@ export async function POST(
           createdAt: now,
           updatedAt: now,
         };
+
+        if (classCode) {
+          partData.classCode = classCode;
+        }
+        if (customFields && Object.keys(customFields).length > 0) {
+          partData.customFields = customFields;
+        }
 
         const tokenRef = db.collection('access_tokens').doc(tokenHash);
         const tokenData = {

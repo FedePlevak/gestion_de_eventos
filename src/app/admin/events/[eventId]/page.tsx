@@ -77,6 +77,8 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
     familyName: d.data().familyName,
     contactPhone: d.data().contactPhone,
     contactEmail: d.data().contactEmail,
+    classCode: d.data().classCode || undefined,
+    customFields: d.data().customFields || undefined,
     secret: d.data().tokenHash,
   }));
 

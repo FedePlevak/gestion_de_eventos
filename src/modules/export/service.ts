@@ -32,8 +32,13 @@ export async function exportEventResponsesCsv(
   const partsSnap = await eventRef.collection('participants').where('status', '==', 'active').get();
   const participants = partsSnap.docs.map((d) => d.data());
 
+  const hasClassCode = participants.some((p) => Boolean(p.classCode));
+
   const rows: string[] = [];
-  rows.push(['Familia', 'Etapa', 'Tipo de Consulta', 'Respuesta', 'Fecha de Respuesta', 'Versión'].join(','));
+  const headers = hasClassCode
+    ? ['Familia', 'Clase / Grado', 'Etapa', 'Tipo de Consulta', 'Respuesta', 'Fecha de Respuesta', 'Versión']
+    : ['Familia', 'Etapa', 'Tipo de Consulta', 'Respuesta', 'Fecha de Respuesta', 'Versión'];
+  rows.push(headers.join(','));
 
   for (const stage of stages) {
     const respSnap = await eventRef.collection('stages').doc(stage.id).collection('responses').get();
@@ -58,14 +63,19 @@ export async function exportEventResponsesCsv(
         }
       }
 
-      rows.push([
-        escapeCsv(p.familyName),
+      const row = [escapeCsv(p.familyName)];
+      if (hasClassCode) {
+        row.push(escapeCsv(p.classCode || ''));
+      }
+      row.push(
         escapeCsv(stage.title),
         escapeCsv(stage.type),
         escapeCsv(answerText),
         escapeCsv(resp?.updatedAt || resp?.submittedAt || ''),
-        escapeCsv(resp?.version || ''),
-      ].join(','));
+        escapeCsv(resp?.version || '')
+      );
+
+      rows.push(row.join(','));
     }
   }
 
@@ -92,20 +102,38 @@ export async function exportEventPaymentsCsv(
     paymentsMap.set(doc.id, doc.data() as PaymentReport);
   }
 
+  const hasClassCode = participants.some((p) => Boolean(p.classCode));
+
   const rows: string[] = [];
-  rows.push([
-    'Familia',
-    'Contacto',
-    'Estado de Pago',
-    'Moneda',
-    'Importe Esperado',
-    'Importe Declarado',
-    'Fecha de Transferencia',
-    'Importe Verificado',
-    'Fecha de Verificación',
-    'Verificado Por',
-    'Tiene Comprobante Adjunto',
-  ].join(','));
+  const headers = hasClassCode
+    ? [
+        'Familia',
+        'Clase / Grado',
+        'Contacto',
+        'Estado de Pago',
+        'Moneda',
+        'Importe Esperado',
+        'Importe Declarado',
+        'Fecha de Transferencia',
+        'Importe Verificado',
+        'Fecha de Verificación',
+        'Verificado Por',
+        'Tiene Comprobante Adjunto',
+      ]
+    : [
+        'Familia',
+        'Contacto',
+        'Estado de Pago',
+        'Moneda',
+        'Importe Esperado',
+        'Importe Declarado',
+        'Fecha de Transferencia',
+        'Importe Verificado',
+        'Fecha de Verificación',
+        'Verificado Por',
+        'Tiene Comprobante Adjunto',
+      ];
+  rows.push(headers.join(','));
 
   for (const p of participants) {
     const pay = paymentsMap.get(p.id);
@@ -119,8 +147,11 @@ export async function exportEventPaymentsCsv(
     else if (pay?.status === 'reported') statusText = 'Informado (a verificar)';
     else if (pay?.status === 'requires_revision') statusText = 'En revisión';
 
-    rows.push([
-      escapeCsv(p.familyName),
+    const row = [escapeCsv(p.familyName)];
+    if (hasClassCode) {
+      row.push(escapeCsv(p.classCode || ''));
+    }
+    row.push(
       escapeCsv(p.contactEmail || p.contactPhone || ''),
       escapeCsv(statusText),
       escapeCsv(pay?.currency || 'UYU'),
@@ -130,8 +161,10 @@ export async function exportEventPaymentsCsv(
       escapeCsv(verified),
       escapeCsv(pay?.verifiedAt || ''),
       escapeCsv(pay?.verifiedBy || ''),
-      escapeCsv(hasAttachment),
-    ].join(','));
+      escapeCsv(hasAttachment)
+    );
+
+    rows.push(row.join(','));
   }
 
   return rows.join('\r\n');

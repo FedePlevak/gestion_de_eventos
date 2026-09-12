@@ -39,6 +39,8 @@ export interface ParticipantModel {
   familyName: string;
   contactEmail?: string;
   contactPhone?: string;
+  classCode?: string;
+  customFields?: Record<string, string>;
   status: 'active' | 'inactive';
   inactiveReason?: string;
   inactivatedAt?: string;

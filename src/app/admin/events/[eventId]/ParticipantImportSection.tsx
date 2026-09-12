@@ -16,6 +16,13 @@ interface ParsedFamily {
   familyName: string;
   contactPhone?: string;
   contactEmail?: string;
+  classCode?: string;
+  customFields?: Record<string, string>;
+}
+
+interface ExtraColumnMapping {
+  columnName: string;
+  label: string;
 }
 
 export function ParticipantImportSection({ eventId, onImportComplete }: ParticipantImportSectionProps) {
@@ -30,13 +37,18 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
   // Columnas asignadas por el usuario
   const [selectedNameCol, setSelectedNameCol] = useState<string>('');
   const [selectedSurnameCol, setSelectedSurnameCol] = useState<string>('');
+  const [selectedClassCol, setSelectedClassCol] = useState<string>('');
   const [selectedPhoneCol, setSelectedPhoneCol] = useState<string>('');
   const [selectedEmailCol, setSelectedEmailCol] = useState<string>('');
+
+  // Columnas adicionales libres
+  const [extraMappings, setExtraMappings] = useState<ExtraColumnMapping[]>([]);
 
   // Personalización del nombre
   const [prefixOption, setPrefixOption] = useState<'none' | 'familia' | 'custom'>('none');
   const [customPrefix, setCustomPrefix] = useState<string>('');
   const [nameOrder, setNameOrder] = useState<'name_surname' | 'surname_name' | 'name_only' | 'surname_only'>('name_surname');
+  const [appendClassToName, setAppendClassToName] = useState<boolean>(false);
 
   // Control de vista previa y proceso
   const [showRawPreview, setShowRawPreview] = useState(false);
@@ -47,6 +59,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
 
   // Estado para alta manual individual
   const [manualName, setManualName] = useState('');
+  const [manualClassCode, setManualClassCode] = useState('');
   const [manualPhone, setManualPhone] = useState('');
   const [manualEmail, setManualEmail] = useState('');
 
@@ -117,6 +130,19 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
       );
       setSelectedSurnameCol(foundSurname ? foundSurname.original : '');
 
+      // Detección de Código de Clase / Grado / Grupo (ej: "class code", "clase", "grado", "grupo", etc.)
+      const foundClass = normCols.find((c) =>
+        c.norm.includes('class') ||
+        c.norm.includes('clase') ||
+        c.norm.includes('grado') ||
+        c.norm.includes('grupo') ||
+        c.norm.includes('curso') ||
+        c.norm.includes('seccion') ||
+        c.norm.includes('division') ||
+        c.norm.includes('aula')
+      );
+      setSelectedClassCol(foundClass ? foundClass.original : '');
+
       const foundPhone = normCols.find(
         (c) =>
           c.norm.includes('telefono') ||
@@ -149,6 +175,31 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
     }
   };
 
+  const handleAddExtraColumn = () => {
+    // Buscar la primera columna disponible que no esté en mappings
+    const unusedCol = availableColumns.find(
+      (c) =>
+        c !== selectedNameCol &&
+        c !== selectedSurnameCol &&
+        c !== selectedClassCol &&
+        c !== selectedPhoneCol &&
+        c !== selectedEmailCol &&
+        !extraMappings.some((m) => m.columnName === c)
+    );
+    if (!unusedCol) return;
+    setExtraMappings([...extraMappings, { columnName: unusedCol, label: unusedCol }]);
+  };
+
+  const handleRemoveExtraColumn = (index: number) => {
+    setExtraMappings(extraMappings.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateExtraColumn = (index: number, key: 'columnName' | 'label', value: string) => {
+    const updated = [...extraMappings];
+    updated[index][key] = value;
+    setExtraMappings(updated);
+  };
+
   // Recalcular lista parseada en tiempo real según el mapeo y personalización
   const parsedList = useMemo<ParsedFamily[]>(() => {
     if (!selectedNameCol || rawRows.length === 0) return [];
@@ -158,6 +209,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
     for (const row of rawRows) {
       const rawName = String(row[selectedNameCol] || '').trim();
       const rawSurname = selectedSurnameCol ? String(row[selectedSurnameCol] || '').trim() : '';
+      const classVal = selectedClassCol ? String(row[selectedClassCol] || '').trim() : '';
 
       if (!rawName && !rawSurname) continue;
 
@@ -186,13 +238,32 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
         finalName = `${customPrefix.trim()} ${finalName}`;
       }
 
+      // Opcional: Anexar código de clase al nombre visible si el usuario lo desea
+      if (appendClassToName && classVal) {
+        finalName = `${finalName} (${classVal})`;
+      }
+
       const phoneVal = selectedPhoneCol ? String(row[selectedPhoneCol] || '').trim() : '';
       const emailVal = selectedEmailCol ? String(row[selectedEmailCol] || '').trim() : '';
+
+      // Mapear campos adicionales
+      let customFieldsObj: Record<string, string> | undefined = undefined;
+      if (extraMappings.length > 0) {
+        customFieldsObj = {};
+        for (const mapping of extraMappings) {
+          const val = String(row[mapping.columnName] || '').trim();
+          if (val) {
+            customFieldsObj[mapping.label || mapping.columnName] = val;
+          }
+        }
+      }
 
       result.push({
         familyName: finalName,
         contactPhone: phoneVal || undefined,
         contactEmail: emailVal || undefined,
+        classCode: classVal || undefined,
+        customFields: customFieldsObj,
       });
     }
 
@@ -201,11 +272,14 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
     rawRows,
     selectedNameCol,
     selectedSurnameCol,
+    selectedClassCol,
     selectedPhoneCol,
     selectedEmailCol,
+    extraMappings,
     prefixOption,
     customPrefix,
     nameOrder,
+    appendClassToName,
   ]);
 
   const handleConfirmImport = async () => {
@@ -225,11 +299,12 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
 
       setFeedback({
         type: 'success',
-        message: `🎉 ¡Éxito! Se importaron ${data.count} familias y se generaron sus enlaces únicos. Ya podés convocarlas y enviarles recordatorios por WhatsApp.`,
+        message: `🎉 ¡Éxito! Se importaron ${data.count} participantes y se generaron sus enlaces únicos. Ya podés convocarlos y enviarles recordatorios por WhatsApp.`,
       });
 
       setRawRows([]);
       setAvailableColumns([]);
+      setExtraMappings([]);
       setFileName(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (onImportComplete) onImportComplete();
@@ -257,6 +332,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
           participants: [
             {
               familyName: manualName.trim(),
+              classCode: manualClassCode.trim() || undefined,
               contactPhone: manualPhone.trim() || undefined,
               contactEmail: manualEmail.trim() || undefined,
             },
@@ -269,10 +345,11 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
 
       setFeedback({
         type: 'success',
-        message: `✓ Familia "${manualName.trim()}" agregada con éxito y enlace generado.`,
+        message: `✓ Participante "${manualName.trim()}" agregado con éxito y enlace generado.`,
       });
 
       setManualName('');
+      setManualClassCode('');
       setManualPhone('');
       setManualEmail('');
       if (onImportComplete) onImportComplete();
@@ -288,9 +365,9 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
 
   const handleDownloadTemplate = () => {
     const templateData = [
-      { 'Nombre': 'Benicio', 'Apellido': 'García', 'Teléfono / WhatsApp': '099123456', 'Correo Electrónico': 'garcia@ejemplo.com' },
-      { 'Nombre': 'Franco Vincenzo', 'Apellido': 'Rodríguez', 'Teléfono / WhatsApp': '098654321', 'Correo Electrónico': 'rodriguez@ejemplo.com' },
-      { 'Nombre': 'Manuel', 'Apellido': 'Pérez', 'Teléfono / WhatsApp': '091223344', 'Correo Electrónico': '' },
+      { 'Nombre': 'Benicio', 'Apellido': 'García', 'Código de Clase / Grado': '6A', 'Teléfono / WhatsApp': '099123456', 'Correo Electrónico': 'garcia@ejemplo.com' },
+      { 'Nombre': 'Franco Vincenzo', 'Apellido': 'Rodríguez', 'Código de Clase / Grado': '6A', 'Teléfono / WhatsApp': '098654321', 'Correo Electrónico': 'rodriguez@ejemplo.com' },
+      { 'Nombre': 'Manuel', 'Apellido': 'Pérez', 'Código de Clase / Grado': '6B', 'Teléfono / WhatsApp': '091223344', 'Correo Electrónico': '' },
     ];
 
     const ws = XLSX.utils.json_to_sheet(templateData);
@@ -387,7 +464,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                     {fileName ? fileName : 'Arrastrá o seleccioná tu archivo Excel (.xlsx, .xls) o CSV (.csv)'}
                   </strong>
                   <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                    Detecta automáticamente todas las columnas y filas de tu archivo para que elijas qué datos usar.
+                    Detecta automáticamente todas las columnas (Nombre, Apellido, Class Code / Grado, Teléfono, Correo y más)
                   </span>
 
                   <input
@@ -449,7 +526,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                           ⚙️ Detección y Personalización de Columnas
                         </strong>
                         <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                          Se detectaron <strong>{rawRows.length} filas</strong> y <strong>{availableColumns.length} columnas</strong> en tu archivo. Elegí qué columna corresponde a cada dato:
+                          Se detectaron <strong>{rawRows.length} filas</strong> y <strong>{availableColumns.length} columnas</strong> en tu archivo. Asigná libremente qué dato representa cada columna:
                         </div>
                       </div>
                       <button
@@ -480,7 +557,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                           overflowX: 'auto',
                         }}
                       >
-                        <strong style={{ display: 'block', marginBottom: '4px' }}>Columnas detectadas:</strong>
+                        <strong style={{ display: 'block', marginBottom: '4px' }}>Columnas detectadas en el archivo:</strong>
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                           {availableColumns.map((col, idx) => (
                             <span
@@ -524,7 +601,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                     <div
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
                         gap: 'var(--spacing-3)',
                         backgroundColor: 'var(--color-surface-subtle)',
                         padding: 'var(--spacing-3)',
@@ -573,7 +650,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                             backgroundColor: 'var(--color-surface)',
                           }}
                         >
-                          <option value="">-- Ninguna (ya incluido o sin apellido) --</option>
+                          <option value="">-- Ninguna (sin apellido o ya incluido) --</option>
                           {availableColumns.map((col) => (
                             <option key={col} value={col}>
                               {col}
@@ -582,10 +659,36 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                         </select>
                       </div>
 
-                      {/* 3. Columna de Teléfono / Celular */}
+                      {/* 3. Columna de Código de Clase / Grado / Grupo (ej: Class Code) */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
+                          🏫 Código de Clase / Grado / Grupo:
+                        </label>
+                        <select
+                          value={selectedClassCol}
+                          onChange={(e) => setSelectedClassCol(e.target.value)}
+                          style={{
+                            padding: '6px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid var(--color-primary)',
+                            fontSize: 'var(--font-size-xs)',
+                            backgroundColor: '#f8fafc',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <option value="">-- Ninguno (sin código de clase) --</option>
+                          {availableColumns.map((col) => (
+                            <option key={col} value={col}>
+                              {col}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* 4. Columna de Teléfono / Celular */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-text-main)' }}>
-                          📱 Columna de Teléfono / WhatsApp:
+                          📱 Teléfono / WhatsApp (opcional):
                         </label>
                         <select
                           value={selectedPhoneCol}
@@ -607,10 +710,10 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                         </select>
                       </div>
 
-                      {/* 4. Columna de Email */}
+                      {/* 5. Columna de Email */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-text-main)' }}>
-                          ✉️ Columna de Correo Electrónico:
+                          ✉️ Correo Electrónico (opcional):
                         </label>
                         <select
                           value={selectedEmailCol}
@@ -631,6 +734,73 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                           ))}
                         </select>
                       </div>
+                    </div>
+
+                    {/* Mapeo de columnas adicionales libres */}
+                    {extraMappings.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)', paddingTop: 'var(--spacing-2)', borderTop: '1px dashed var(--color-border)' }}>
+                        <strong style={{ fontSize: 'var(--font-size-xs)' }}>
+                          📌 Columnas adicionales del archivo a conservar:
+                        </strong>
+                        {extraMappings.map((mapping, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 'var(--font-size-xs)' }}>Columna del archivo:</span>
+                            <select
+                              value={mapping.columnName}
+                              onChange={(e) => handleUpdateExtraColumn(idx, 'columnName', e.target.value)}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: 'var(--radius-sm)',
+                                border: '1px solid var(--color-border)',
+                                fontSize: 'var(--font-size-xs)',
+                              }}
+                            >
+                              {availableColumns.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                            <span style={{ fontSize: 'var(--font-size-xs)' }}>Etiqueta:</span>
+                            <input
+                              type="text"
+                              value={mapping.label}
+                              onChange={(e) => handleUpdateExtraColumn(idx, 'label', e.target.value)}
+                              placeholder="Ej: Observaciones, Tutor..."
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: 'var(--radius-sm)',
+                                border: '1px solid var(--color-border)',
+                                fontSize: 'var(--font-size-xs)',
+                                width: '130px',
+                              }}
+                            />
+                            <Button
+                              variant="outline"
+                              onClick={() => handleRemoveExtraColumn(idx)}
+                              style={{ minHeight: '26px', padding: '0 6px', fontSize: '11px', color: '#b91c1c' }}
+                            >
+                              Quitar
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                      <button
+                        type="button"
+                        onClick={handleAddExtraColumn}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-primary)',
+                          fontSize: 'var(--font-size-xs)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        + Agregar otra columna adicional del archivo
+                      </button>
                     </div>
 
                     {/* Opciones de personalización del nombre */}
@@ -702,6 +872,17 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                           </select>
                         </div>
                       )}
+
+                      {selectedClassCol && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--font-size-xs)', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={appendClassToName}
+                            onChange={(e) => setAppendClassToName(e.target.checked)}
+                          />
+                          <span>Incluir código de clase en el nombre visible (ej: "Benicio (6A)")</span>
+                        </label>
+                      )}
                     </div>
                   </div>
                 )}
@@ -722,23 +903,25 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
                       <div>
                         <strong style={{ fontSize: 'var(--font-size-sm)' }}>
-                          Vista previa ({parsedList.length} familias a importar)
+                          Vista previa ({parsedList.length} participantes a importar)
                         </strong>
                         <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)' }}>
-                          Verificá que los nombres, teléfonos y correos coincidan con lo que querés guardar.
+                          Revisá que los nombres, clases, teléfonos y correos coincidan con lo deseado.
                         </div>
                       </div>
                       <Badge variant="info">Listo para guardar</Badge>
                     </div>
 
-                    <div style={{ maxHeight: '240px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }}>
+                    <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }}>
                       <table style={{ width: '100%', fontSize: 'var(--font-size-xs)', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                           <tr style={{ backgroundColor: 'var(--color-surface-subtle)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0 }}>
                             <th style={{ padding: '0.4rem 0.6rem' }}>#</th>
                             <th style={{ padding: '0.4rem 0.6rem' }}>Nombre / Familia a Guardar</th>
+                            {selectedClassCol && <th style={{ padding: '0.4rem 0.6rem' }}>Clase / Grado</th>}
                             <th style={{ padding: '0.4rem 0.6rem' }}>Teléfono / Celular</th>
                             <th style={{ padding: '0.4rem 0.6rem' }}>Correo Electrónico</th>
+                            {extraMappings.length > 0 && <th style={{ padding: '0.4rem 0.6rem' }}>Otros datos</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -746,12 +929,41 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                             <tr key={idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
                               <td style={{ padding: '0.35rem 0.6rem', color: 'var(--color-text-subtle)' }}>{idx + 1}</td>
                               <td style={{ padding: '0.35rem 0.6rem', fontWeight: 600 }}>{fam.familyName}</td>
+                              {selectedClassCol && (
+                                <td style={{ padding: '0.35rem 0.6rem' }}>
+                                  {fam.classCode ? (
+                                    <span
+                                      style={{
+                                        backgroundColor: '#e0e7ff',
+                                        color: '#3730a3',
+                                        padding: '1px 6px',
+                                        borderRadius: '4px',
+                                        fontWeight: 600,
+                                        fontSize: '11px',
+                                      }}
+                                    >
+                                      {fam.classCode}
+                                    </span>
+                                  ) : (
+                                    '—'
+                                  )}
+                                </td>
+                              )}
                               <td style={{ padding: '0.35rem 0.6rem', color: fam.contactPhone ? 'inherit' : 'var(--color-text-subtle)' }}>
                                 {fam.contactPhone || '—'}
                               </td>
                               <td style={{ padding: '0.35rem 0.6rem', color: fam.contactEmail ? 'inherit' : 'var(--color-text-subtle)' }}>
                                 {fam.contactEmail || '—'}
                               </td>
+                              {extraMappings.length > 0 && (
+                                <td style={{ padding: '0.35rem 0.6rem', fontSize: '11px', color: 'var(--color-text-subtle)' }}>
+                                  {fam.customFields && Object.keys(fam.customFields).length > 0
+                                    ? Object.entries(fam.customFields)
+                                        .map(([k, v]) => `${k}: ${v}`)
+                                        .join(', ')
+                                    : '—'}
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -760,7 +972,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
 
                     {parsedList.length > 20 && (
                       <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                        ... y {parsedList.length - 20} familias más.
+                        ... y {parsedList.length - 20} participantes más.
                       </span>
                     )}
 
@@ -770,7 +982,7 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
                       isLoading={importLoading}
                       style={{ marginTop: 'var(--spacing-2)' }}
                     >
-                      Confirmar e importar {parsedList.length} familias
+                      Confirmar e importar {parsedList.length} participantes
                     </Button>
                   </div>
                 )}
@@ -781,10 +993,16 @@ export function ParticipantImportSection({ eventId, onImportComplete }: Particip
               <form onSubmit={handleManualAdd} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
                 <Input
                   label="Nombre de la familia o alumno"
-                  placeholder="Ej: Familia Rodríguez Silva"
+                  placeholder="Ej: Familia Rodríguez Silva o Benicio"
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
                   required
+                />
+                <Input
+                  label="Código de Clase / Grado / Grupo (opcional)"
+                  placeholder="Ej: 6A, 1B, Primaria..."
+                  value={manualClassCode}
+                  onChange={(e) => setManualClassCode(e.target.value)}
                 />
                 <Input
                   label="Teléfono / Celular (opcional para recordatorios WhatsApp)"

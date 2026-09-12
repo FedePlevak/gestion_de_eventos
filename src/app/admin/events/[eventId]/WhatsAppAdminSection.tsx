@@ -13,6 +13,8 @@ interface ParticipantItem {
   familyName: string;
   contactPhone?: string;
   contactEmail?: string;
+  classCode?: string;
+  customFields?: Record<string, string>;
   secret?: string;
 }
 
@@ -25,6 +27,16 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplateType>('INVITATION');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string>('ALL');
+
+  // Obtener lista única de clases si existen
+  const classCodes = Array.from(
+    new Set(participants.map((p) => p.classCode).filter(Boolean))
+  ) as string[];
+
+  const filteredParticipants = selectedClassFilter === 'ALL'
+    ? participants
+    : participants.filter((p) => p.classCode === selectedClassFilter);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -65,34 +77,83 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
       </div>
 
       {/* Selector de plantilla */}
-      <div style={{ display: 'flex', gap: 'var(--spacing-2)', overflowX: 'auto', paddingBottom: 'var(--spacing-1)' }}>
-        <Button
-          variant={selectedTemplate === 'INVITATION' ? 'primary' : 'secondary'}
-          onClick={() => setSelectedTemplate('INVITATION')}
-          style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
-        >
-          Invitación y Acceso
-        </Button>
-        <Button
-          variant={selectedTemplate === 'STAGE_REMINDER' ? 'primary' : 'secondary'}
-          onClick={() => setSelectedTemplate('STAGE_REMINDER')}
-          style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
-        >
-          Recordatorio de Menú
-        </Button>
-        <Button
-          variant={selectedTemplate === 'PAYMENT_REMINDER' ? 'primary' : 'secondary'}
-          onClick={() => setSelectedTemplate('PAYMENT_REMINDER')}
-          style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
-        >
-          Recordatorio de Cuota ($3.000)
-        </Button>
+      {/* Selector de plantilla y filtro de clase */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+        <div style={{ display: 'flex', gap: 'var(--spacing-2)', overflowX: 'auto', paddingBottom: 'var(--spacing-1)' }}>
+          <Button
+            variant={selectedTemplate === 'INVITATION' ? 'primary' : 'secondary'}
+            onClick={() => setSelectedTemplate('INVITATION')}
+            style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
+          >
+            Invitación y Acceso
+          </Button>
+          <Button
+            variant={selectedTemplate === 'STAGE_REMINDER' ? 'primary' : 'secondary'}
+            onClick={() => setSelectedTemplate('STAGE_REMINDER')}
+            style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
+          >
+            Recordatorio de Menú
+          </Button>
+          <Button
+            variant={selectedTemplate === 'PAYMENT_REMINDER' ? 'primary' : 'secondary'}
+            onClick={() => setSelectedTemplate('PAYMENT_REMINDER')}
+            style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
+          >
+            Recordatorio de Cuota ($3.000)
+          </Button>
+        </div>
+
+        {/* Filtro por Clase / Grado si existen clases cargadas */}
+        {classCodes.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', flexWrap: 'wrap', backgroundColor: 'var(--color-surface-subtle)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+            <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>🏫 Filtrar por Clase/Grado:</span>
+            <button
+              type="button"
+              onClick={() => setSelectedClassFilter('ALL')}
+              style={{
+                padding: '3px 8px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--color-border)',
+                backgroundColor: selectedClassFilter === 'ALL' ? 'var(--color-primary)' : 'var(--color-surface)',
+                color: selectedClassFilter === 'ALL' ? '#ffffff' : 'inherit',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Todas ({participants.length})
+            </button>
+            {classCodes.map((code) => {
+              const count = participants.filter((p) => p.classCode === code).length;
+              const isSelected = selectedClassFilter === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setSelectedClassFilter(code)}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--color-border)',
+                    backgroundColor: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
+                    color: isSelected ? '#ffffff' : 'inherit',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clase {code} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Lista de familias con mensajes preparados */}
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-          {participants.map((p) => {
+          {filteredParticipants.map((p) => {
             const appUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
             const accessUrl = p.secret ? `${appUrl}/f#secret=${p.secret}` : `${appUrl}/f`;
             const msg = buildWhatsAppMessage(selectedTemplate, {
@@ -119,11 +180,25 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
                   gap: 'var(--spacing-2)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontWeight: 700 }}>Familia {p.familyName}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700 }}>{p.familyName}</span>
+                    {p.classCode && (
+                      <span
+                        style={{
+                          backgroundColor: '#e0e7ff',
+                          color: '#3730a3',
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 600,
+                          fontSize: '11px',
+                        }}
+                      >
+                        Clase {p.classCode}
+                      </span>
+                    )}
                     {p.contactPhone && (
-                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', marginLeft: 'var(--spacing-2)' }}>
+                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
                         📱 {p.contactPhone}
                       </span>
                     )}
