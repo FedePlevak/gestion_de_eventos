@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { FinancialSummary, PaymentReport } from '@/modules/payments/types';
+import { PaymentConfig } from '@/modules/events/types';
 
 export interface ParticipantPaymentItem {
   id: string; // participantId
@@ -18,15 +20,31 @@ export interface ParticipantPaymentItem {
 
 interface Props {
   eventId: string;
+  initialConfig: PaymentConfig;
   initialSummary: FinancialSummary;
   initialPayments: ParticipantPaymentItem[];
 }
 
 export const PaymentAdminSection: React.FC<Props> = ({
   eventId,
+  initialConfig,
   initialSummary,
   initialPayments,
 }) => {
+  const router = useRouter();
+  const [config, setConfig] = useState<PaymentConfig>(initialConfig);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [showConfigForm, setShowConfigForm] = useState(false);
+  const [editAmount, setEditAmount] = useState(
+    config.expectedAmountMinor ? (config.expectedAmountMinor / 100).toString() : ''
+  );
+  const [editCurrency, setEditCurrency] = useState(config.currency || 'UYU');
+  const [editBankName, setEditBankName] = useState(config.bankInstructions?.bankName || '');
+  const [editAccountHolder, setEditAccountHolder] = useState(config.bankInstructions?.accountHolder || '');
+  const [editAccountNumber, setEditAccountNumber] = useState(config.bankInstructions?.accountNumber || '');
+  const [editAlias, setEditAlias] = useState(config.bankInstructions?.alias || '');
+  const [editNotes, setEditNotes] = useState(config.bankInstructions?.additionalNotes || '');
+
   const [summary, setSummary] = useState<FinancialSummary>(initialSummary);
   const [payments, setPayments] = useState<ParticipantPaymentItem[]>(initialPayments);
   const [filter, setFilter] = useState<'all' | 'reported' | 'verified' | 'pending' | 'requires_revision'>('all');
@@ -134,8 +152,293 @@ export const PaymentAdminSection: React.FC<Props> = ({
     }
   };
 
+  const handleToggleVisibility = async (newEnabled: boolean) => {
+    setSavingConfig(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentConfig: {
+            ...config,
+            enabled: newEnabled,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al actualizar visibilidad de la etapa de cuota.');
+      }
+      setConfig((prev) => ({ ...prev, enabled: newEnabled }));
+      setFeedback(
+        newEnabled
+          ? 'Etapa de cuota PUBLICADA. Ahora es visible para todas las familias en su panel.'
+          : 'Etapa de cuota OCULTADA. Las familias ya no la ven en su panel ni pueden informar transferencias.'
+      );
+      router.refresh();
+    } catch (err: any) {
+      alert(err.message || 'Error al actualizar la visibilidad.');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    setFeedback(null);
+    try {
+      const amountNumber = parseFloat(editAmount) || 0;
+      const amountMinor = Math.round(amountNumber * 100);
+      const updatedConfigPayload = {
+        enabled: config.enabled,
+        expectedAmountMinor: amountMinor,
+        currency: editCurrency,
+        bankInstructions: {
+          bankName: editBankName.trim(),
+          accountHolder: editAccountHolder.trim(),
+          accountNumber: editAccountNumber.trim(),
+          alias: editAlias.trim() || undefined,
+          additionalNotes: editNotes.trim() || undefined,
+        },
+      };
+
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentConfig: updatedConfigPayload }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al guardar la configuración.');
+      }
+      setConfig((prev) => ({
+        ...prev,
+        expectedAmountMinor: amountMinor,
+        currency: editCurrency,
+        bankInstructions: updatedConfigPayload.bankInstructions,
+      }));
+      setFeedback('Configuración y datos bancarios de la cuota guardados con éxito.');
+      setShowConfigForm(false);
+      router.refresh();
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar configuración.');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
+    <section id="seccion-pagos" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
+      {/* Control Principal de la Etapa de Cuota / Aporte */}
+      <Card
+        title="Etapa de Aporte o Cuota del Evento"
+        subtitle={
+          config.expectedAmountMinor > 0
+            ? `Importe fijado: $${(config.expectedAmountMinor / 100).toLocaleString('es-UY')} ${config.currency}`
+            : 'Monto no configurado'
+        }
+        action={
+          config.enabled ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Badge variant="success">🟢 PUBLICADA Y VISIBLE</Badge>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Badge variant="neutral">⚪ OCULTA (BORRADOR)</Badge>
+            </div>
+          )
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
+          {/* Banner de estado y botón de activación/ocultación */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 'var(--spacing-3)',
+              padding: 'var(--spacing-3)',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: config.enabled ? 'rgba(34, 197, 94, 0.08)' : 'rgba(100, 116, 139, 0.08)',
+              border: config.enabled ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid var(--color-border)',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontWeight: 700,
+                  fontSize: 'var(--font-size-sm)',
+                  color: config.enabled ? '#166534' : 'var(--color-text-main)',
+                }}
+              >
+                {config.enabled
+                  ? '📢 Esta etapa está ACTIVA y VISIBLE para todas las familias.'
+                  : '🔒 Esta etapa está OCULTA para las familias.'}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                {config.enabled
+                  ? 'Aparece como una etapa en el panel familiar para que las familias vean los datos e informen transferencias.'
+                  : 'Las familias no la ven en su panel ni pueden registrar pagos hasta que decidas publicarla.'}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
+              <Button
+                variant="outline"
+                onClick={() => setShowConfigForm(!showConfigForm)}
+                style={{ fontSize: 'var(--font-size-xs)', padding: '0.4rem 0.8rem' }}
+              >
+                {showConfigForm ? 'Cerrar Ajustes' : '⚙️ Configurar Monto / Cuenta'}
+              </Button>
+
+              {config.enabled ? (
+                <Button
+                  variant="outline"
+                  onClick={() => handleToggleVisibility(false)}
+                  isLoading={savingConfig}
+                  style={{
+                    fontSize: 'var(--font-size-xs)',
+                    padding: '0.4rem 0.9rem',
+                    borderColor: '#eab308',
+                    color: '#b45309',
+                    fontWeight: 700,
+                  }}
+                >
+                  🚫 Ocultar cuota a las familias
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  onClick={() => handleToggleVisibility(true)}
+                  isLoading={savingConfig}
+                  style={{
+                    fontSize: 'var(--font-size-xs)',
+                    padding: '0.4rem 0.9rem',
+                    backgroundColor: '#16a34a',
+                    color: '#fff',
+                    fontWeight: 700,
+                  }}
+                >
+                  👁️ Mostrar / Publicar cuota a las familias
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Formulario desplegable para configurar monto e instrucciones bancarias */}
+          {showConfigForm && (
+            <form
+              onSubmit={handleSaveConfig}
+              style={{
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: 'var(--spacing-3)',
+                backgroundColor: 'var(--color-surface)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--spacing-3)',
+              }}
+            >
+              <h4 style={{ margin: 0, fontSize: 'var(--font-size-sm)', fontWeight: 700 }}>
+                Ajustes de la Cuota e Instrucciones Bancarias
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--spacing-2)' }}>
+                <div>
+                  <Input
+                    label="Monto esperado por familia"
+                    type="number"
+                    placeholder="Ej: 2000"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 'var(--font-size-xs)', fontWeight: 600, marginBottom: 'var(--spacing-1)' }}>
+                    Moneda
+                  </label>
+                  <select
+                    value={editCurrency}
+                    onChange={(e) => setEditCurrency(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.65rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--color-border)',
+                      fontSize: 'var(--font-size-sm)',
+                      backgroundColor: 'var(--color-surface)',
+                    }}
+                  >
+                    <option value="UYU">UYU ($)</option>
+                    <option value="USD">USD (US$)</option>
+                    <option value="ARS">ARS ($)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--spacing-2)' }}>
+                <Input
+                  label="Banco o Entidad"
+                  placeholder="Ej: Banco República (BROU), Santander, Itaú"
+                  value={editBankName}
+                  onChange={(e) => setEditBankName(e.target.value)}
+                />
+                <Input
+                  label="Titular de la cuenta"
+                  placeholder="Ej: Comisión de Padres Bambini 5"
+                  value={editAccountHolder}
+                  onChange={(e) => setEditAccountHolder(e.target.value)}
+                />
+                <Input
+                  label="Número de Cuenta / CBU"
+                  placeholder="Ej: 001234567-00001"
+                  value={editAccountNumber}
+                  onChange={(e) => setEditAccountNumber(e.target.value)}
+                />
+                <Input
+                  label="Alias / Referencia (opcional)"
+                  placeholder="Ej: bambini5.fin.de.ano"
+                  value={editAlias}
+                  onChange={(e) => setEditAlias(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--font-size-xs)', fontWeight: 600, marginBottom: 'var(--spacing-1)' }}>
+                  Notas o instrucciones para las familias
+                </label>
+                <textarea
+                  rows={2}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Ej: Indicar el nombre del alumno/a en el concepto de la transferencia."
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)',
+                    fontSize: 'var(--font-size-sm)',
+                    backgroundColor: 'var(--color-surface)',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)' }}>
+                <Button type="button" variant="outline" onClick={() => setShowConfigForm(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" variant="primary" isLoading={savingConfig}>
+                  💾 Guardar Cambios
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </Card>
       {/* Métricas Financieras del Evento */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--spacing-3)' }}>
         <div

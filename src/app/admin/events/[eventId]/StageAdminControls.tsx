@@ -1264,6 +1264,46 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
           </Card>
         );
       })}
+
+      {/* Indicador de etapa de cuota / aporte */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 'var(--spacing-2)',
+          padding: 'var(--spacing-3) var(--spacing-4)',
+          backgroundColor: 'var(--color-surface)',
+          border: '1px dashed var(--color-border)',
+          borderRadius: 'var(--radius-md)',
+          marginTop: 'var(--spacing-2)',
+        }}
+      >
+        <div>
+          <span style={{ fontWeight: 700, fontSize: 'var(--font-size-sm)' }}>
+            💳 Etapa de Cuota o Aporte Económico
+          </span>
+          <p style={{ margin: '2px 0 0', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+            Podés publicar u ocultar el aporte financiero a las familias y ajustar el monto cuando lo entiendas pertinente.
+          </p>
+        </div>
+
+        <a
+          href="#seccion-pagos"
+          style={{
+            fontSize: 'var(--font-size-xs)',
+            fontWeight: 700,
+            color: 'var(--color-primary)',
+            textDecoration: 'none',
+            padding: '0.35rem 0.75rem',
+            backgroundColor: 'var(--color-primary-light, rgba(59, 130, 246, 0.1))',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          Gestionar Etapa de Cuota ↓
+        </a>
+      </div>
     </div>
   );
 };

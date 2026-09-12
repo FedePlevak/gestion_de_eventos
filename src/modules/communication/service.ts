@@ -92,7 +92,7 @@ export async function getPendingFamiliesWhatsAppList(
       accessUrl,
       stageTitle: stage?.title,
       deadlineText: stage?.deadlineAt ? new Date(stage.deadlineAt).toLocaleDateString('es-UY') : undefined,
-      amountText: event.paymentConfig?.expectedAmountMinor
+      amountText: (event.paymentConfig?.enabled && event.paymentConfig?.expectedAmountMinor)
         ? `$${(event.paymentConfig.expectedAmountMinor / 100).toLocaleString('es-UY')} ${event.paymentConfig.currency}`
         : undefined,
     });

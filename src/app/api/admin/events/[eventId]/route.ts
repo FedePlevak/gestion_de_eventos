@@ -101,3 +101,78 @@ export async function DELETE(
     );
   }
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { eventId: string } }
+) {
+  try {
+    const organizer = await getOrganizerContextFromRequest(request);
+    const workspaceId = organizer.workspaceId || 'principal';
+    await validateOrganizerEventAccess(organizer, params.eventId, workspaceId);
+
+    const body = await request.json();
+    const { paymentConfig, name, description, eventDate } = body;
+
+    const db = getAdminDb();
+    const eventRef = db.collection('workspaces').doc(workspaceId).collection('events').doc(params.eventId);
+    const snap = await eventRef.get();
+    if (!snap.exists) {
+      throw new NotFoundError('El evento no existe.');
+    }
+
+    const updates: Record<string, any> = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (name && typeof name === 'string' && name.trim().length >= 2) {
+      updates.name = name.trim();
+    }
+    if (description !== undefined) {
+      updates.description = typeof description === 'string' ? description.trim() : '';
+    }
+    if (eventDate !== undefined) {
+      updates.eventDate = eventDate ? new Date(eventDate).toISOString() : null;
+    }
+
+    if (paymentConfig !== undefined) {
+      const currentConfig = snap.data()?.paymentConfig || {};
+      const updatedPaymentConfig = {
+        enabled: paymentConfig.enabled !== undefined ? Boolean(paymentConfig.enabled) : Boolean(currentConfig.enabled),
+        expectedAmountMinor: paymentConfig.expectedAmountMinor !== undefined ? Math.round(Number(paymentConfig.expectedAmountMinor)) : (currentConfig.expectedAmountMinor || 0),
+        currency: paymentConfig.currency || currentConfig.currency || 'UYU',
+        bankInstructions: paymentConfig.bankInstructions !== undefined ? paymentConfig.bankInstructions : (currentConfig.bankInstructions || null),
+        instructionsUpdatedAt: new Date().toISOString(),
+      };
+      updates.paymentConfig = updatedPaymentConfig;
+    }
+
+    await eventRef.update(updates);
+
+    await recordAuditEvent({
+      workspaceId,
+      eventId: params.eventId,
+      actor: { type: 'organizer', id: organizer.organizerId },
+      action: 'UPDATE_EVENT',
+      targetType: 'event',
+      targetId: params.eventId,
+      details: { updates },
+    });
+
+    const updatedSnap = await eventRef.get();
+    return NextResponse.json({
+      success: true,
+      event: { id: updatedSnap.id, ...updatedSnap.data() },
+    });
+  } catch (error: any) {
+    if (error instanceof AppError) {
+      return NextResponse.json({ error: error.userMessage }, { status: error.statusCode });
+    }
+    console.error('Error al actualizar evento:', error);
+    return NextResponse.json(
+      { error: error.message || 'Error al actualizar el evento.' },
+      { status: 500 }
+    );
+  }
+}
+

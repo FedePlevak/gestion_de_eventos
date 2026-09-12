@@ -51,6 +51,10 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
   const { getEventStagesForFamily } = await import('@/modules/stages/service');
   const stages = await getEventStagesForFamily(sessionContext);
 
+  // Cargar estado de la cuota / aporte para esta familia
+  const { getFamilyPaymentStatus } = await import('@/modules/payments/service');
+  const paymentData = await getFamilyPaymentStatus(sessionContext);
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header
@@ -83,29 +87,39 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
           </p>
         </section>
 
-        {/* Sección de Etapas y Consultas con Resumen de Avance */}
+        {/* Sección de Etapas del Evento con Resumen de Avance Unificado */}
         {(() => {
-          const answeredCount = stages.filter((s) => s.hasResponded || s.hasRead).length;
-          const pendingCount = stages.filter((s) => !s.hasResponded && !s.hasRead && !s.isClosed).length;
-          const progressPercent = stages.length > 0 ? Math.round((answeredCount / stages.length) * 100) : 100;
+          const hasPaymentStage = Boolean(paymentData?.enabled);
+          const isPaymentComplete =
+            hasPaymentStage &&
+            (paymentData.payment.status === 'reported' || paymentData.payment.status === 'verified');
+          const isPaymentPending = hasPaymentStage && !isPaymentComplete;
+
+          const surveyAnsweredCount = stages.filter((s) => s.hasResponded || s.hasRead).length;
+          const surveyPendingCount = stages.filter((s) => !s.hasResponded && !s.hasRead && !s.isClosed).length;
+
+          const totalStagesCount = stages.length + (hasPaymentStage ? 1 : 0);
+          const totalCompletedCount = surveyAnsweredCount + (isPaymentComplete ? 1 : 0);
+          const totalPendingCount = surveyPendingCount + (isPaymentPending ? 1 : 0);
+          const progressPercent = totalStagesCount > 0 ? Math.round((totalCompletedCount / totalStagesCount) * 100) : 100;
 
           return (
             <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
                 <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-text-main)' }}>
-                  Consultas y Votaciones
+                  Etapas y Consultas del Evento
                 </h3>
                 <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                  {stages.length} consulta{stages.length === 1 ? '' : 's'} activa{stages.length === 1 ? '' : 's'}
+                  {totalStagesCount} etapa{totalStagesCount === 1 ? '' : 's'} activa{totalStagesCount === 1 ? '' : 's'}
                 </span>
               </div>
 
-              {/* Barra de progreso de la familia */}
-              {stages.length > 0 && (
+              {/* Barra de progreso unificada de la familia */}
+              {totalStagesCount > 0 && (
                 <div
                   style={{
-                    backgroundColor: pendingCount > 0 ? 'var(--color-surface)' : 'var(--color-success-surface, #e8f5e9)',
-                    border: pendingCount > 0 ? '1px solid var(--color-border)' : '1px solid var(--color-success-border, #c8e6c9)',
+                    backgroundColor: totalPendingCount > 0 ? 'var(--color-surface)' : 'var(--color-success-surface, #e8f5e9)',
+                    border: totalPendingCount > 0 ? '1px solid var(--color-border)' : '1px solid var(--color-success-border, #c8e6c9)',
                     borderRadius: 'var(--radius-md)',
                     padding: 'var(--spacing-3) var(--spacing-4)',
                     display: 'flex',
@@ -114,13 +128,13 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ fontSize: 'var(--font-size-sm)', color: pendingCount > 0 ? 'var(--color-text-main)' : 'var(--color-success-text, #2e7d32)' }}>
-                      {pendingCount > 0
-                        ? `🔔 Tenés ${pendingCount} consulta${pendingCount > 1 ? 's' : ''} pendiente${pendingCount > 1 ? 's' : ''} de respuesta`
-                        : '🎉 ¡Completaste todas las consultas activas de este evento!'}
+                    <strong style={{ fontSize: 'var(--font-size-sm)', color: totalPendingCount > 0 ? 'var(--color-text-main)' : 'var(--color-success-text, #2e7d32)' }}>
+                      {totalPendingCount > 0
+                        ? `🔔 Tenés ${totalPendingCount} etapa${totalPendingCount > 1 ? 's' : ''} pendiente${totalPendingCount > 1 ? 's' : ''} de completar`
+                        : '🎉 ¡Completaste todas las etapas activas de este evento!'}
                     </strong>
                     <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
-                      {answeredCount} de {stages.length} completadas ({progressPercent}%)
+                      {totalCompletedCount} de {totalStagesCount} completadas ({progressPercent}%)
                     </span>
                   </div>
 
@@ -137,51 +151,120 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                 </div>
               )}
 
-              {stages.length === 0 ? (
+              {totalStagesCount === 0 ? (
                 <Card>
                   <div style={{ textAlign: 'center', padding: 'var(--spacing-4) 0', color: 'var(--color-text-muted)' }}>
-                    <p style={{ fontWeight: 600 }}>No hay consultas abiertas en este momento.</p>
+                    <p style={{ fontWeight: 600 }}>No hay etapas abiertas en este momento.</p>
                     <p style={{ fontSize: 'var(--font-size-sm)', marginTop: 'var(--spacing-1)' }}>
                       El comité organizador te avisará cuando haya una nueva etapa disponible para participar.
                     </p>
                   </div>
                 </Card>
               ) : (
-                stages.map((stage) => {
-                  const isPending = !stage.hasResponded && !stage.hasRead && !stage.isClosed;
+                <>
+                  {/* Etapas de votación / consultas */}
+                  {stages.map((stage) => {
+                    const isPending = !stage.hasResponded && !stage.hasRead && !stage.isClosed;
 
-                  let badgeElement = <Badge variant="warning">⏳ Pendiente</Badge>;
-                  if (stage.hasResponded) {
-                    badgeElement = <Badge variant="success">✓ Ya respondiste</Badge>;
-                  } else if (stage.hasRead) {
-                    badgeElement = <Badge variant="success">✓ Lectura confirmada</Badge>;
-                  } else if (stage.isClosed) {
-                    badgeElement = <Badge variant="neutral">Cerrada</Badge>;
-                  }
+                    let badgeElement = <Badge variant="warning">⏳ Pendiente</Badge>;
+                    if (stage.hasResponded) {
+                      badgeElement = <Badge variant="success">✓ Ya respondiste</Badge>;
+                    } else if (stage.hasRead) {
+                      badgeElement = <Badge variant="success">✓ Lectura confirmada</Badge>;
+                    } else if (stage.isClosed) {
+                      badgeElement = <Badge variant="neutral">Cerrada</Badge>;
+                    }
 
-                  return (
+                    return (
+                      <Link
+                        key={stage.id}
+                        href={`/e/${params.eventId}/stages/${stage.id}`}
+                        style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+                      >
+                        <Card
+                          title={stage.title}
+                          subtitle={
+                            stage.deadlineAt
+                              ? `Cierre: ${new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}`
+                              : undefined
+                          }
+                          action={badgeElement}
+                        >
+                          {stage.description && (
+                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: 'var(--spacing-1) 0' }}>
+                              {stage.description}
+                            </p>
+                          )}
+
+                          <div style={{ marginTop: 'var(--spacing-2)' }}>
+                            {isPending ? (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.3rem',
+                                  fontSize: 'var(--font-size-sm)',
+                                  fontWeight: 700,
+                                  color: 'var(--color-primary)',
+                                }}
+                              >
+                                👉 Responder consulta ahora →
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  fontSize: 'var(--font-size-xs)',
+                                  fontWeight: 600,
+                                  color: 'var(--color-text-subtle)',
+                                }}
+                              >
+                                Ver detalle de mi respuesta →
+                              </span>
+                            )}
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+
+                  {/* Etapa de Cuota / Aporte Financiero (integrada visualmente como etapa) */}
+                  {hasPaymentStage && (
                     <Link
-                      key={stage.id}
-                      href={`/e/${params.eventId}/stages/${stage.id}`}
+                      href={`/e/${params.eventId}/payment`}
                       style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                     >
                       <Card
-                        title={stage.title}
+                        title="Cuota o Aporte del Evento"
                         subtitle={
-                          stage.deadlineAt
-                            ? `Cierre: ${new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}`
-                            : undefined
+                          paymentData.expectedAmountMinor > 0
+                            ? `Importe fijado: $${(paymentData.expectedAmountMinor / 100).toLocaleString('es-UY')} ${paymentData.currency}`
+                            : 'Monto a coordinar'
                         }
-                        action={badgeElement}
+                        action={
+                          paymentData.payment.status === 'verified' ? (
+                            <Badge variant="success">✓ Aporte verificado</Badge>
+                          ) : paymentData.payment.status === 'reported' ? (
+                            <Badge variant="info">🟡 En revisión del comité</Badge>
+                          ) : paymentData.payment.status === 'requires_revision' ? (
+                            <Badge variant="danger">⚠️ Requiere corrección</Badge>
+                          ) : (
+                            <Badge variant="warning">⏳ Pendiente de aporte</Badge>
+                          )
+                        }
                       >
-                        {stage.description && (
-                          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: 'var(--spacing-1) 0' }}>
-                            {stage.description}
-                          </p>
-                        )}
+                        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: 'var(--spacing-1) 0' }}>
+                          {paymentData.payment.status === 'verified'
+                            ? 'El comité confirmó la recepción de tu transferencia bancaria. ¡Muchas gracias!'
+                            : paymentData.payment.status === 'reported'
+                            ? 'Informaste tu transferencia. El comité revisará tu comprobante a la brevedad.'
+                            : paymentData.payment.status === 'requires_revision'
+                            ? 'El comité solicitó revisar el comprobante o el importe informado.'
+                            : 'Podés consultar las instrucciones bancarias, realizar la transferencia e informar tu comprobante para revisión del comité.'}
+                        </p>
 
                         <div style={{ marginTop: 'var(--spacing-2)' }}>
-                          {isPending ? (
+                          {isPaymentPending ? (
                             <span
                               style={{
                                 display: 'inline-flex',
@@ -192,7 +275,7 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                                 color: 'var(--color-primary)',
                               }}
                             >
-                              👉 Responder consulta ahora →
+                              👉 Informar aporte o ver datos bancarios →
                             </span>
                           ) : (
                             <span
@@ -203,51 +286,18 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                                 color: 'var(--color-text-subtle)',
                               }}
                             >
-                              Ver detalle de mi respuesta →
+                              Ver detalle y estado de mi comprobante →
                             </span>
                           )}
                         </div>
                       </Card>
                     </Link>
-                  );
-                })
+                  )}
+                </>
               )}
             </section>
           );
         })()}
-
-        {/* Sección de Pago si está habilitada */}
-        {event.paymentConfig?.enabled && (
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-text-main)' }}>
-              Cuota o Aporte del Evento
-            </h3>
-            <Link
-              href={`/e/${params.eventId}/payment`}
-              style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-            >
-              <Card
-                title="Aporte por Familia"
-                subtitle={`Importe fijado: $${(event.paymentConfig.expectedAmountMinor / 100).toLocaleString('es-UY')} ${event.paymentConfig.currency}`}
-                action={<Badge variant="info">Ver Estado</Badge>}
-              >
-                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-3)' }}>
-                  Podés consultar las instrucciones bancarias, informar tu transferencia y adjuntar el comprobante para revisión del comité.
-                </p>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    fontSize: 'var(--font-size-xs)',
-                    fontWeight: 600,
-                    color: 'var(--color-primary)',
-                  }}
-                >
-                  Informar aporte o ver comprobante →
-                </span>
-              </Card>
-            </Link>
-          </section>
-        )}
 
         {/* Mesa de ayuda y consultas directas al comité (Reglas S01, S02) */}
         <FamilySupportSection eventId={params.eventId} />

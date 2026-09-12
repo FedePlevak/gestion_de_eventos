@@ -194,14 +194,18 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
         {/* Sección 4: Asistente de Comunicación y Enlaces WhatsApp */}
         <WhatsAppAdminSection eventName={eventName} participants={participants} />
 
-        {/* Sección 5: Pagos y Aportes Financieros (si está habilitado) */}
-        {config.enabled && (
-          <PaymentAdminSection
-            eventId={params.eventId}
-            initialSummary={initialSummary}
-            initialPayments={initialPayments}
-          />
-        )}
+        {/* Sección 5: Etapa de Aporte o Cuota Financiera (Control de Visibilidad y Estado) */}
+        <PaymentAdminSection
+          eventId={params.eventId}
+          initialConfig={{
+            enabled: Boolean(config.enabled),
+            expectedAmountMinor: config.expectedAmountMinor || 0,
+            currency: config.currency || 'UYU',
+            bankInstructions: config.bankInstructions,
+          }}
+          initialSummary={initialSummary}
+          initialPayments={initialPayments}
+        />
 
         {/* Sección 6: Mesa de Ayuda y Consultas Familiares */}
         <SupportAdminSection eventId={params.eventId} initialTickets={initialTickets} />
