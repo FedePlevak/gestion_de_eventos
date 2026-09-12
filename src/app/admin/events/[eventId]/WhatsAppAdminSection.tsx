@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
@@ -28,15 +28,48 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Obtener lista única de clases si existen
-  const classCodes = Array.from(
-    new Set(participants.map((p) => p.classCode).filter(Boolean))
-  ) as string[];
+  const classCodes = useMemo(() => {
+    return Array.from(
+      new Set(participants.map((p) => p.classCode).filter(Boolean))
+    ) as string[];
+  }, [participants]);
 
-  const filteredParticipants = selectedClassFilter === 'ALL'
-    ? participants
-    : participants.filter((p) => p.classCode === selectedClassFilter);
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  };
+
+  const filteredParticipants = useMemo(() => {
+    return participants.filter((p) => {
+      // 1. Filtro por clase/grado
+      if (selectedClassFilter !== 'ALL' && p.classCode !== selectedClassFilter) {
+        return false;
+      }
+
+      // 2. Filtro por texto de búsqueda
+      if (searchQuery.trim()) {
+        const query = normalizeText(searchQuery);
+        const nameMatch = normalizeText(p.familyName).includes(query);
+        const phoneMatch = p.contactPhone ? normalizeText(p.contactPhone).includes(query) : false;
+        const emailMatch = p.contactEmail ? normalizeText(p.contactEmail).includes(query) : false;
+        const classMatch = p.classCode ? normalizeText(p.classCode).includes(query) : false;
+
+        const customMatch = p.customFields
+          ? Object.values(p.customFields).some((v) => normalizeText(String(v)).includes(query))
+          : false;
+
+        return nameMatch || phoneMatch || emailMatch || classMatch || customMatch;
+      }
+
+      return true;
+    });
+  }, [participants, selectedClassFilter, searchQuery]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -103,56 +136,171 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
           </Button>
         </div>
 
-        {/* Filtro por Clase / Grado si existen clases cargadas */}
-        {classCodes.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', flexWrap: 'wrap', backgroundColor: 'var(--color-surface-subtle)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
-            <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>🏫 Filtrar por Clase/Grado:</span>
-            <button
-              type="button"
-              onClick={() => setSelectedClassFilter('ALL')}
+        {/* Buscador de familias / alumnos y filtro de clase */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--spacing-2)',
+            backgroundColor: 'var(--color-surface-subtle)',
+            padding: 'var(--spacing-3)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          {/* Campo de búsqueda interactivo */}
+          <div style={{ display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <span
+                style={{
+                  position: 'absolute',
+                  left: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--color-text-subtle)',
+                  fontSize: '13px',
+                  pointerEvents: 'none',
+                }}
+              >
+                🔍
+              </span>
+              <input
+                type="text"
+                placeholder="Buscar por nombre de alumno, familia, teléfono..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '7px 30px 7px 32px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-surface)',
+                  fontSize: 'var(--font-size-xs)',
+                  outline: 'none',
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-text-subtle)',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    padding: '2px 4px',
+                  }}
+                  title="Limpiar búsqueda"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <span
               style={{
-                padding: '3px 8px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--color-border)',
-                backgroundColor: selectedClassFilter === 'ALL' ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: selectedClassFilter === 'ALL' ? '#ffffff' : 'inherit',
                 fontSize: '11px',
+                color: 'var(--color-text-subtle)',
+                whiteSpace: 'nowrap',
                 fontWeight: 600,
-                cursor: 'pointer',
               }}
             >
-              Todas ({participants.length})
-            </button>
-            {classCodes.map((code) => {
-              const count = participants.filter((p) => p.classCode === code).length;
-              const isSelected = selectedClassFilter === code;
-              return (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => setSelectedClassFilter(code)}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--color-border)',
-                    backgroundColor: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
-                    color: isSelected ? '#ffffff' : 'inherit',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Clase {code} ({count})
-                </button>
-              );
-            })}
+              {filteredParticipants.length} de {participants.length} familias
+            </span>
           </div>
-        )}
+
+          {/* Filtro por Clase / Grado si existen clases cargadas */}
+          {classCodes.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+                flexWrap: 'wrap',
+                paddingTop: 'var(--spacing-1)',
+                borderTop: '1px dashed var(--color-border)',
+              }}
+            >
+              <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>🏫 Filtrar por Clase/Grado:</span>
+              <button
+                type="button"
+                onClick={() => setSelectedClassFilter('ALL')}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: selectedClassFilter === 'ALL' ? 'var(--color-primary)' : 'var(--color-surface)',
+                  color: selectedClassFilter === 'ALL' ? '#ffffff' : 'inherit',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Todas ({participants.length})
+              </button>
+              {classCodes.map((code) => {
+                const count = participants.filter((p) => p.classCode === code).length;
+                const isSelected = selectedClassFilter === code;
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setSelectedClassFilter(code)}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--color-border)',
+                      backgroundColor: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
+                      color: isSelected ? '#ffffff' : 'inherit',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Clase {code} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Lista de familias con mensajes preparados */}
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
+          {filteredParticipants.length === 0 && (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: 'var(--spacing-5)',
+                color: 'var(--color-text-subtle)',
+                fontSize: 'var(--font-size-sm)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+              }}
+            >
+              <span>🔎 No se encontraron familias que coincidan con "<strong>{searchQuery}</strong>"</span>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedClassFilter('ALL');
+                }}
+                style={{ fontSize: 'var(--font-size-xs)', minHeight: '32px' }}
+              >
+                Restablecer filtros y búsqueda
+              </Button>
+            </div>
+          )}
+
           {filteredParticipants.map((p) => {
             const appUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
             const accessUrl = p.secret ? `${appUrl}/f#secret=${p.secret}` : `${appUrl}/f`;
