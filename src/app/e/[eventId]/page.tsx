@@ -83,67 +83,138 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
           </p>
         </section>
 
-        {/* Sección de Etapas y Consultas */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-text-main)' }}>
-              Etapas y Consultas
-            </h3>
-            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-              {stages.length} disponible{stages.length === 1 ? '' : 's'}
-            </span>
-          </div>
+        {/* Sección de Etapas y Consultas con Resumen de Avance */}
+        {(() => {
+          const answeredCount = stages.filter((s) => s.hasResponded || s.hasRead).length;
+          const pendingCount = stages.filter((s) => !s.hasResponded && !s.hasRead && !s.isClosed).length;
+          const progressPercent = stages.length > 0 ? Math.round((answeredCount / stages.length) * 100) : 100;
 
-          {stages.length === 0 ? (
-            <Card>
-              <div style={{ textAlign: 'center', padding: 'var(--spacing-4) 0', color: 'var(--color-text-muted)' }}>
-                <p style={{ fontWeight: 600 }}>No hay consultas abiertas en este momento.</p>
-                <p style={{ fontSize: 'var(--font-size-sm)', marginTop: 'var(--spacing-1)' }}>
-                  El comité te avisará cuando haya una nueva etapa para participar.
-                </p>
+          return (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
+                <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-text-main)' }}>
+                  Consultas y Votaciones
+                </h3>
+                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+                  {stages.length} consulta{stages.length === 1 ? '' : 's'} activa{stages.length === 1 ? '' : 's'}
+                </span>
               </div>
-            </Card>
-          ) : (
-            stages.map((stage) => {
-              let badgeElement = <Badge variant="warning">Pendiente</Badge>;
-              if (stage.hasResponded) {
-                badgeElement = <Badge variant="success">Respondida</Badge>;
-              } else if (stage.hasRead) {
-                badgeElement = <Badge variant="success">Lectura confirmada</Badge>;
-              } else if (stage.isClosed) {
-                badgeElement = <Badge variant="neutral">Cerrada</Badge>;
-              }
 
-              return (
-                <Link
-                  key={stage.id}
-                  href={`/e/${params.eventId}/stages/${stage.id}`}
-                  style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+              {/* Barra de progreso de la familia */}
+              {stages.length > 0 && (
+                <div
+                  style={{
+                    backgroundColor: pendingCount > 0 ? 'var(--color-surface)' : 'var(--color-success-surface, #e8f5e9)',
+                    border: pendingCount > 0 ? '1px solid var(--color-border)' : '1px solid var(--color-success-border, #c8e6c9)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: 'var(--spacing-3) var(--spacing-4)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--spacing-2)',
+                  }}
                 >
-                  <Card
-                    title={stage.title}
-                    subtitle={stage.description}
-                    action={badgeElement}
-                  >
-                    <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: 'var(--spacing-2) 0' }}>
-                      {stage.content || 'Tocá para ver las opciones y responder.'}
-                    </p>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        fontSize: 'var(--font-size-xs)',
-                        fontWeight: 600,
-                        color: 'var(--color-primary)',
-                      }}
-                    >
-                      Ver consulta y responder →
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong style={{ fontSize: 'var(--font-size-sm)', color: pendingCount > 0 ? 'var(--color-text-main)' : 'var(--color-success-text, #2e7d32)' }}>
+                      {pendingCount > 0
+                        ? `🔔 Tenés ${pendingCount} consulta${pendingCount > 1 ? 's' : ''} pendiente${pendingCount > 1 ? 's' : ''} de respuesta`
+                        : '🎉 ¡Completaste todas las consultas activas de este evento!'}
+                    </strong>
+                    <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      {answeredCount} de {stages.length} completadas ({progressPercent}%)
                     </span>
-                  </Card>
-                </Link>
-              );
-            })
-          )}
-        </section>
+                  </div>
+
+                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${progressPercent}%`,
+                        height: '100%',
+                        backgroundColor: progressPercent === 100 ? 'var(--color-success, #2e7d32)' : 'var(--color-primary)',
+                        transition: 'width 0.4s ease',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {stages.length === 0 ? (
+                <Card>
+                  <div style={{ textAlign: 'center', padding: 'var(--spacing-4) 0', color: 'var(--color-text-muted)' }}>
+                    <p style={{ fontWeight: 600 }}>No hay consultas abiertas en este momento.</p>
+                    <p style={{ fontSize: 'var(--font-size-sm)', marginTop: 'var(--spacing-1)' }}>
+                      El comité organizador te avisará cuando haya una nueva etapa disponible para participar.
+                    </p>
+                  </div>
+                </Card>
+              ) : (
+                stages.map((stage) => {
+                  const isPending = !stage.hasResponded && !stage.hasRead && !stage.isClosed;
+
+                  let badgeElement = <Badge variant="warning">⏳ Pendiente</Badge>;
+                  if (stage.hasResponded) {
+                    badgeElement = <Badge variant="success">✓ Ya respondiste</Badge>;
+                  } else if (stage.hasRead) {
+                    badgeElement = <Badge variant="success">✓ Lectura confirmada</Badge>;
+                  } else if (stage.isClosed) {
+                    badgeElement = <Badge variant="neutral">Cerrada</Badge>;
+                  }
+
+                  return (
+                    <Link
+                      key={stage.id}
+                      href={`/e/${params.eventId}/stages/${stage.id}`}
+                      style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+                    >
+                      <Card
+                        title={stage.title}
+                        subtitle={
+                          stage.deadlineAt
+                            ? `Cierre: ${new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}`
+                            : undefined
+                        }
+                        action={badgeElement}
+                      >
+                        {stage.description && (
+                          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: 'var(--spacing-1) 0' }}>
+                            {stage.description}
+                          </p>
+                        )}
+
+                        <div style={{ marginTop: 'var(--spacing-2)' }}>
+                          {isPending ? (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                fontSize: 'var(--font-size-sm)',
+                                fontWeight: 700,
+                                color: 'var(--color-primary)',
+                              }}
+                            >
+                              👉 Responder consulta ahora →
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                fontSize: 'var(--font-size-xs)',
+                                fontWeight: 600,
+                                color: 'var(--color-text-subtle)',
+                              }}
+                            >
+                              Ver detalle de mi respuesta →
+                            </span>
+                          )}
+                        </div>
+                      </Card>
+                    </Link>
+                  );
+                })
+              )}
+            </section>
+          );
+        })()}
 
         {/* Sección de Pago si está habilitada */}
         {event.paymentConfig?.enabled && (

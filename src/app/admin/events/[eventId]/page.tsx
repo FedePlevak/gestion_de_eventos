@@ -48,19 +48,22 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
   const eventData = eventDoc.data()!;
   const eventName = eventData.name || 'Evento sin título';
 
-  // 1. Obtener etapas
   const stagesSnap = await eventRef.collection('stages').orderBy('order').get();
   const stages = stagesSnap.docs.map((d) => {
     const s = d.data();
     return {
       id: d.id,
       title: s.title,
+      description: s.description || '',
       type: s.type,
-      status: s.status,
+      status: s.status || 'open',
+      visibility: s.visibility || 'hidden',
+      order: s.order ?? 1,
       deadlineAt: s.deadlineAt || undefined,
       responseCount: s.responseCount || 0,
       readCount: s.readCount || 0,
       isSemanticallyLocked: Boolean(s.isSemanticallyLocked),
+      options: s.options || [],
       clarifications: s.clarifications || [],
     };
   });

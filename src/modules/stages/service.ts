@@ -463,6 +463,7 @@ export async function updateStageAdmin(
     if (parsed.description !== undefined) updates.description = parsed.description;
     if (parsed.content !== undefined) updates.content = parsed.content;
     if (parsed.visibility !== undefined) updates.visibility = parsed.visibility;
+    if (parsed.status !== undefined) updates.status = parsed.status;
     if (parsed.order !== undefined) updates.order = parsed.order;
     if (parsed.deadlineAt !== undefined) updates.deadlineAt = parsed.deadlineAt || undefined;
     if (!stage.isSemanticallyLocked && parsed.options !== undefined) {

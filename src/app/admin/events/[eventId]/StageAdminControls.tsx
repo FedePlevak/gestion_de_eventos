@@ -2,19 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/Card';
-import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { Badge } from '@/components/Badge';
 
-interface StageSummary {
+export interface StageSummary {
   id: string;
   title: string;
+  description?: string;
   type: string;
-  status: 'open' | 'closed' | 'draft' | 'canceled';
+  status: string; // 'draft' | 'open' | 'closed'
+  visibility?: string; // 'visible' | 'hidden'
+  order?: number;
   deadlineAt?: string;
   responseCount: number;
   readCount: number;
   isSemanticallyLocked: boolean;
+  options?: Array<{ id: string; label: string; description?: string }>;
   clarifications?: { id: string; content: string; createdAt: string }[];
 }
 
@@ -24,7 +28,9 @@ interface Props {
 }
 
 export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) => {
-  const [stages, setStages] = useState<StageSummary[]>(initialStages);
+  const [stages, setStages] = useState<StageSummary[]>(
+    [...initialStages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  );
   const [activeActionStageId, setActiveActionStageId] = useState<string | null>(null);
   const [actionType, setActionType] = useState<'close' | 'reopen' | 'clarify' | 'publish' | 'unpublish' | null>(null);
   const [reasonOrContent, setReasonOrContent] = useState('');
@@ -39,10 +45,20 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
   const [createDescription, setCreateDescription] = useState('');
   const [createDeadline, setCreateDeadline] = useState('');
   const [createOptions, setCreateOptions] = useState<string[]>(['Opción A', 'Opción B']);
+  const [createPublishImmediately, setCreatePublishImmediately] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Estados para panel visual de avance y resultados
+  // Estados para edición de etapa existente
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDeadline, setEditDeadline] = useState('');
+  const [editOptions, setEditOptions] = useState<string[]>([]);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Estados para panel visual de avance y resultados en vivo
   const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
   const [stageOverviewData, setStageOverviewData] = useState<Record<string, any>>({});
   const [overviewLoading, setOverviewLoading] = useState(false);
@@ -52,11 +68,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     if (!force && stageOverviewData[stageId]) return;
     setOverviewLoading(true);
     try {
-      const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}`, {
-        headers: {
-          'x-dev-organizer-email': 'organizador1@colegio.edu.uy',
-        },
-      });
+      const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}`);
       if (res.ok) {
         const data = await res.json();
         setStageOverviewData((prev) => ({ ...prev, [stageId]: data }));
@@ -77,40 +89,29 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     }
   };
 
-  // Sincronizar etapas reales si existen en base de datos
-  useEffect(() => {
-    const fetchStages = async () => {
-      try {
-        const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages`, {
-          headers: {
-            'x-dev-organizer-email': 'organizador1@colegio.edu.uy',
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.stages && data.stages.length > 0) {
-            setStages(
-              data.stages.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-                type: s.type,
-                status: s.status,
-                deadlineAt: s.deadlineAt,
-                responseCount: s.responseCount || 0,
-                readCount: s.readCount || 0,
-                isSemanticallyLocked: s.isSemanticallyLocked || false,
-                clarifications: s.clarifications || [],
-              }))
-            );
-          }
+  // Sincronizar etapas en vivo
+  const refreshStages = async () => {
+    try {
+      const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.stages) {
+          const sorted = (data.stages as StageSummary[]).sort(
+            (a, b) => (a.order ?? 0) - (b.order ?? 0)
+          );
+          setStages(sorted);
         }
-      } catch (err) {
-        // En caso de fallo de red en dev, conserva initialStages
       }
-    };
-    fetchStages();
+    } catch (err) {
+      console.error('Error al refrescar etapas:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshStages();
   }, [eventId]);
 
+  // Manejo de opciones en creación
   const handleAddOption = () => {
     setCreateOptions((prev) => [...prev, `Opción ${String.fromCharCode(65 + prev.length)}`]);
   };
@@ -131,6 +132,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     setCreateOptions((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Guardar nueva etapa
   const handleCreateStage = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
@@ -160,7 +162,8 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
         title: createTitle.trim(),
         description: createDescription.trim() || undefined,
         type: createType,
-        visibility: 'visible',
+        visibility: createPublishImmediately ? 'visible' : 'hidden',
+        status: 'open',
         order: stages.length + 1,
       };
 
@@ -174,10 +177,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
 
       const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dev-organizer-email': 'organizador1@colegio.edu.uy',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -186,20 +186,11 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
         throw new Error(data.error || 'Error al guardar la etapa.');
       }
 
-      const newStageSummary: StageSummary = {
-        id: data.stage.id,
-        title: data.stage.title,
-        type: data.stage.type,
-        status: data.stage.status,
-        deadlineAt: data.stage.deadlineAt,
-        responseCount: 0,
-        readCount: 0,
-        isSemanticallyLocked: false,
-        clarifications: [],
-      };
-
-      setStages((prev) => [...prev, newStageSummary]);
-      setFeedback(`✓ ¡Consulta "${data.stage.title}" creada y publicada exitosamente!`);
+      setFeedback(
+        createPublishImmediately
+          ? `✓ Consulta "${data.stage.title}" creada y publicada exitosamente para las familias.`
+          : `✓ Consulta "${data.stage.title}" creada en Borrador (Oculta). Podés editarla o activarla cuando desees.`
+      );
       setIsCreating(false);
 
       // Resetear campos
@@ -208,6 +199,9 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
       setCreateType('single_choice');
       setCreateDeadline('');
       setCreateOptions(['Opción A', 'Opción B']);
+      setCreatePublishImmediately(false);
+
+      await refreshStages();
     } catch (err: any) {
       setCreateError(err.message || 'Error al crear la etapa.');
     } finally {
@@ -215,6 +209,164 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     }
   };
 
+  // Abrir edición de etapa
+  const startEditing = (stage: StageSummary) => {
+    setEditingStageId(stage.id);
+    setEditTitle(stage.title);
+    setEditDescription(stage.description || '');
+    setEditDeadline(stage.deadlineAt ? new Date(stage.deadlineAt).toISOString().slice(0, 16) : '');
+    setEditOptions(stage.options ? stage.options.map((o) => o.label) : ['Opción A', 'Opción B']);
+    setEditError(null);
+    setActiveActionStageId(null);
+  };
+
+  const handleEditAddOption = () => {
+    setEditOptions((prev) => [...prev, `Opción ${String.fromCharCode(65 + prev.length)}`]);
+  };
+
+  const handleEditOptionChange = (idx: number, val: string) => {
+    setEditOptions((prev) => {
+      const next = [...prev];
+      next[idx] = val;
+      return next;
+    });
+  };
+
+  const handleEditRemoveOption = (idx: number) => {
+    if (editOptions.length <= 2) {
+      alert('Se requieren al menos 2 opciones.');
+      return;
+    }
+    setEditOptions((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Guardar edición
+  const handleSaveEdit = async (stageId: string) => {
+    if (!editTitle.trim()) {
+      setEditError('El título no puede estar vacío.');
+      return;
+    }
+
+    const currentStage = stages.find((s) => s.id === stageId);
+    if (!currentStage) return;
+
+    setEditLoading(true);
+    setEditError(null);
+
+    try {
+      const payload: any = {
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        deadlineAt: editDeadline ? new Date(editDeadline).toISOString() : null,
+      };
+
+      if (!currentStage.isSemanticallyLocked && (currentStage.type === 'single_choice' || currentStage.type === 'multiple_choice')) {
+        const valid = editOptions.map((o) => o.trim()).filter(Boolean);
+        if (valid.length < 2) {
+          setEditError('Debés ingresar al menos 2 opciones.');
+          setEditLoading(false);
+          return;
+        }
+        payload.options = valid.map((label, idx) => ({
+          id: currentStage.options?.[idx]?.id || `opt_${Date.now()}_${idx + 1}`,
+          label,
+        }));
+      }
+
+      const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al guardar los cambios.');
+
+      setFeedback('✓ Cambios guardados exitosamente.');
+      setEditingStageId(null);
+      await refreshStages();
+    } catch (err: any) {
+      setEditError(err.message || 'Error al actualizar la etapa.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Activar / Ocultar etapa (1 solo clic)
+  const handleToggleVisibility = async (stageId: string, currentVisibility: string = 'hidden') => {
+    setLoading(true);
+    setFeedback(null);
+
+    const willBeVisible = currentVisibility !== 'visible';
+    const payload = {
+      visibility: willBeVisible ? 'visible' : 'hidden',
+      status: willBeVisible ? 'open' : undefined,
+    };
+
+    try {
+      const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al cambiar visibilidad.');
+
+      setFeedback(
+        willBeVisible
+          ? '✓ Consulta activada y visible para las familias convocadas.'
+          : '✓ Consulta pausada y oculta para las familias.'
+      );
+      await refreshStages();
+    } catch (err: any) {
+      alert(err.message || 'Error al cambiar visibilidad.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reordenar etapas (Subir / Bajar)
+  const handleMoveStage = async (stageId: string, direction: 'up' | 'down') => {
+    const sorted = [...stages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const idx = sorted.findIndex((s) => s.id === stageId);
+    if (idx === -1) return;
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= sorted.length) return;
+
+    const currentStage = sorted[idx];
+    const targetStage = sorted[targetIdx];
+
+    const currentOrder = currentStage.order ?? idx + 1;
+    const targetOrder = targetStage.order ?? targetIdx + 1;
+
+    setLoading(true);
+    try {
+      // Actualizar ambas etapas
+      await Promise.all([
+        fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(currentStage.id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: targetOrder }),
+        }),
+        fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(targetStage.id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: currentOrder }),
+        }),
+      ]);
+
+      setFeedback('✓ Orden de consultas actualizado.');
+      await refreshStages();
+    } catch (err) {
+      console.error('Error al mover etapa:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Acciones administrativas de cierre / reapertura / aclaración / publicación de resultados
   const handleExecuteAction = async (stageId: string) => {
     if (!actionType) return;
     setLoading(true);
@@ -223,21 +375,18 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     try {
       if (actionType === 'publish' || actionType === 'unpublish') {
         const payload: any = actionType === 'unpublish' ? { action: 'unpublish' } : { note: reasonOrContent.trim() };
-        const res = await fetch(`/api/admin/events/${eventId}/stages/${stageId}/publish`, {
+        const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}/publish`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-dev-organizer-email': 'organizador1@colegio.edu.uy',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error al actualizar publicación');
-        setFeedback(actionType === 'publish' ? '✓ Resultados publicados exitosamente para las familias.' : '✓ Publicación de resultados retirada.');
+        setFeedback(actionType === 'publish' ? '✓ Resultados publicados para las familias.' : '✓ Publicación de resultados retirada.');
         setActiveActionStageId(null);
         setActionType(null);
         setReasonOrContent('');
-        setLoading(false);
+        await refreshStages();
         return;
       }
 
@@ -251,55 +400,33 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
           return;
         }
         payload.reason = reasonOrContent.trim();
-        payload.newDeadlineAt = newDeadline ? new Date(newDeadline).toISOString() : null;
+        if (newDeadline) payload.newDeadlineAt = new Date(newDeadline).toISOString();
       } else if (actionType === 'clarify') {
-        if (!reasonOrContent.trim()) {
-          alert('El texto de la aclaración es obligatorio.');
+        if (!reasonOrContent.trim() || reasonOrContent.trim().length < 3) {
+          alert('El texto de la aclaración debe tener al menos 3 caracteres.');
           setLoading(false);
           return;
         }
         payload.content = reasonOrContent.trim();
       }
 
-      const res = await fetch(`/api/admin/events/${eventId}/stages/${stageId}`, {
+      const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dev-organizer-email': 'organizador1@colegio.edu.uy',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Error al ejecutar acción');
-      }
+      if (!res.ok) throw new Error(data.error || 'Error al ejecutar la acción');
 
-      setFeedback('✓ Acción aplicada con éxito.');
-      setStages((prev) =>
-        prev.map((s) => {
-          if (s.id !== stageId) return s;
-          if (actionType === 'close') return { ...s, status: 'closed' };
-          if (actionType === 'reopen') return { ...s, status: 'open', deadlineAt: payload.newDeadlineAt };
-          if (actionType === 'clarify') {
-            return {
-              ...s,
-              clarifications: [
-                ...(s.clarifications || []),
-                { id: `clar_${Date.now()}`, content: reasonOrContent, createdAt: new Date().toISOString() },
-              ],
-            };
-          }
-          return s;
-        })
-      );
-
+      setFeedback('✓ Acción registrada exitosamente.');
       setActiveActionStageId(null);
       setActionType(null);
       setReasonOrContent('');
       setNewDeadline('');
+      await refreshStages();
     } catch (err: any) {
-      alert(err.message || 'Ocurrió un error.');
+      alert(err.message || 'Error al procesar la acción.');
     } finally {
       setLoading(false);
     }
@@ -307,31 +434,27 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-      {/* Barra superior con botón de Crear Nueva Etapa */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
-        <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-subtle)' }}>
-          {stages.length} consulta{stages.length === 1 ? '' : 's'} configurada{stages.length === 1 ? '' : 's'}
-        </span>
-
-        {!isCreating && (
-          <Button
-            variant="primary"
-            onClick={() => setIsCreating(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-1)' }}
-          >
-            + Nueva Etapa / Consulta
-          </Button>
-        )}
+      {/* Botón principal para abrir formulario de creación */}
+      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            setIsCreating(!isCreating);
+            setEditingStageId(null);
+          }}
+          style={{ minHeight: '38px', fontSize: 'var(--font-size-sm)' }}
+        >
+          {isCreating ? '✕ Cancelar Nueva Etapa' : '+ Nueva Etapa / Consulta'}
+        </Button>
       </div>
 
       {feedback && (
         <div
           style={{
-            backgroundColor: 'var(--color-success-bg)',
-            border: '1px solid var(--color-success-border)',
-            color: 'var(--color-success-text)',
-            padding: 'var(--spacing-2) var(--spacing-3)',
-            borderRadius: 'var(--radius-md)',
+            padding: 'var(--spacing-3)',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'var(--color-success-surface, #e8f5e9)',
+            color: 'var(--color-success-text, #2e7d32)',
             fontSize: 'var(--font-size-sm)',
             fontWeight: 600,
           }}
@@ -340,50 +463,45 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
         </div>
       )}
 
-      {/* Formulario para Crear Nueva Etapa */}
+      {/* Formulario de creación de nueva etapa */}
       {isCreating && (
         <Card
-          title="Crear Nueva Consulta o Etapa"
-          subtitle="Configurá las preguntas para que las familias participen desde su celular."
-          action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setIsCreating(false);
-                setCreateError(null);
-              }}
-              style={{ fontSize: 'var(--font-size-xs)', padding: '0.2rem 0.6rem' }}
-            >
-              Cerrar
-            </Button>
-          }
+          title="Crear Nueva Etapa de Consulta o Información"
+          subtitle="Configurá la pregunta y opciones. Se guardará por defecto en borrador para que puedas revisarla antes de activarla."
         >
           <form onSubmit={handleCreateStage} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
             {createError && (
               <div
                 style={{
-                  backgroundColor: 'var(--color-danger-bg)',
-                  border: '1px solid var(--color-danger-border)',
-                  color: 'var(--color-danger-text)',
-                  padding: 'var(--spacing-2) var(--spacing-3)',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: 'var(--font-size-xs)',
+                  padding: 'var(--spacing-3)',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--color-error-surface, #ffebee)',
+                  color: 'var(--color-error-text, #c62828)',
+                  fontSize: 'var(--font-size-sm)',
+                  fontWeight: 600,
                 }}
               >
-                ⚠ {createError}
+                {createError}
               </div>
             )}
 
             <Input
-              label="Título de la consulta"
-              placeholder="Ej: Elección del Plato Principal, Confirmación de Asistencia, Talle de Remera"
+              label="Título o pregunta principal de la etapa"
+              placeholder="Ej: Necesitamos confirmar una fecha para el evento"
               value={createTitle}
               onChange={(e) => setCreateTitle(e.target.value)}
               required
             />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
-              <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+            <Input
+              label="Descripción o contexto adicional (opcional)"
+              placeholder="Ej: Indiquen las fechas en las que su familia tiene disponibilidad"
+              value={createDescription}
+              onChange={(e) => setCreateDescription(e.target.value)}
+            />
+
+            <div>
+              <label style={{ display: 'block', fontSize: 'var(--font-size-xs)', fontWeight: 600, marginBottom: 'var(--spacing-1)' }}>
                 Tipo de consulta
               </label>
               <select
@@ -391,69 +509,37 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                 onChange={(e) => setCreateType(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: 'var(--spacing-2)',
+                  padding: '0.65rem',
                   borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--color-border)',
                   fontSize: 'var(--font-size-sm)',
                   backgroundColor: 'var(--color-surface)',
                 }}
               >
-                <option value="single_choice">Votación de Opción Única (1 sola opción)</option>
-                <option value="multiple_choice">Selección Múltiple (1 o más opciones)</option>
-                <option value="yes_no">Consulta Sí o No</option>
-                <option value="open_text">Texto libre / Comentarios o Sugerencias</option>
-                <option value="integer_quantity">Cantidad Numérica (ej. cantidad de entradas)</option>
-                <option value="info">Aviso Informativo (con confirmación de lectura)</option>
+                <option value="single_choice">Opción única (Votar una sola alternativa)</option>
+                <option value="multiple_choice">Opción múltiple (Permitir varias opciones)</option>
+                <option value="yes_no">Sí / No</option>
+                <option value="integer_quantity">Cantidad numérica (Ej: cuántas personas asisten)</option>
+                <option value="open_text">Texto libre / Sugerencias</option>
+                <option value="info">Solo Informativa (Lectura con confirmación)</option>
               </select>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
-              <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
-                Instrucciones o descripción para las familias
-              </label>
-              <textarea
-                value={createDescription}
-                onChange={(e) => setCreateDescription(e.target.value)}
-                placeholder="Explicá a las familias qué deben elegir o considerar..."
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: 'var(--spacing-2)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                  fontSize: 'var(--font-size-sm)',
-                  fontFamily: 'inherit',
-                }}
-              />
-            </div>
-
-            {/* Opciones de respuesta para single_choice y multiple_choice */}
             {(createType === 'single_choice' || createType === 'multiple_choice') && (
               <div
                 style={{
-                  backgroundColor: 'var(--color-surface-subtle)',
-                  padding: 'var(--spacing-3)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 'var(--spacing-2)',
+                  padding: 'var(--spacing-3)',
+                  backgroundColor: 'var(--color-surface-subtle)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700 }}>
-                    Opciones de votación:
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddOption}
-                    style={{ fontSize: 'var(--font-size-xs)', padding: '0.2rem 0.5rem' }}
-                  >
-                    + Agregar opción
-                  </Button>
-                </div>
-
+                <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
+                  Opciones de respuesta disponibles:
+                </span>
                 {createOptions.map((opt, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
                     <Input
@@ -461,61 +547,77 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                       placeholder={`Opción ${idx + 1}`}
                       value={opt}
                       onChange={(e) => handleOptionChange(idx, e.target.value)}
-                      required
                     />
                     {createOptions.length > 2 && (
-                      <Button
+                      <button
                         type="button"
-                        variant="secondary"
                         onClick={() => handleRemoveOption(idx)}
-                        style={{ fontSize: 'var(--font-size-xs)', padding: '0.4rem 0.6rem', alignSelf: 'flex-end', marginBottom: '4px' }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-error-text, #c62828)',
+                          cursor: 'pointer',
+                          padding: '0.4rem',
+                          fontSize: 'var(--font-size-sm)',
+                        }}
                       >
                         ✕
-                      </Button>
+                      </button>
                     )}
                   </div>
                 ))}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 'var(--spacing-1)' }}>
+                  <Button type="button" variant="outline" onClick={handleAddOption} style={{ fontSize: 'var(--font-size-xs)', minHeight: '30px' }}>
+                    + Agregar otra opción
+                  </Button>
+                </div>
               </div>
             )}
 
             <Input
-              label="Fecha y hora de cierre (opcional)"
+              label="Fecha y hora de cierre automático (opcional)"
               type="datetime-local"
               value={createDeadline}
               onChange={(e) => setCreateDeadline(e.target.value)}
             />
-            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', marginTop: '-0.5rem' }}>
-              💡 Si no fijás fecha, la consulta quedará abierta hasta que el comité decida cerrarla manualmente.
+
+            {/* Checkbox para activar inmediatamente o dejar en borrador */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', cursor: 'pointer', marginTop: 'var(--spacing-1)' }}>
+              <input
+                type="checkbox"
+                checked={createPublishImmediately}
+                onChange={(e) => setCreatePublishImmediately(e.target.checked)}
+              />
+              <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                Hacer visible y abierta para las familias inmediatamente
+              </span>
+            </label>
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+              {createPublishImmediately
+                ? '⚠️ Las familias podrán verla y votar en cuanto la guardes.'
+                : '🔒 Se guardará como borrador oculto. Podrás revisarla, editarla y activarla con un clic.'}
             </span>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-2)' }}>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setIsCreating(false);
-                  setCreateError(null);
-                }}
-                disabled={createLoading}
-              >
+              <Button type="button" variant="outline" onClick={() => setIsCreating(false)}>
                 Cancelar
               </Button>
 
-              <Button
-                type="submit"
-                variant="primary"
-                isLoading={createLoading}
-              >
-                Crear y Publicar Etapa
+              <Button type="submit" variant="primary" isLoading={createLoading}>
+                {createPublishImmediately ? 'Guardar y Publicar Etapa' : 'Guardar Etapa en Borrador'}
               </Button>
             </div>
           </form>
         </Card>
       )}
 
-      {/* Lista de etapas existentes */}
-      {stages.map((stage) => {
-        const isEditingThis = activeActionStageId === stage.id;
+      {/* Lista de etapas existentes ordenadas */}
+      {stages.map((stage, index) => {
+        const isEditingThisAction = activeActionStageId === stage.id;
+        const isEditingForm = editingStageId === stage.id;
+        const isVisible = stage.visibility === 'visible';
+        const isOpen = stage.status === 'open';
 
         return (
           <Card
@@ -524,20 +626,47 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
             subtitle={
               stage.deadlineAt
                 ? `Cierre: ${new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}`
-                : 'Sin fecha límite configurada (cierre manual)'
+                : 'Sin fecha límite fija (cierre manual)'
             }
             action={
-              <Badge variant={stage.status === 'open' ? 'success' : 'neutral'}>
-                {stage.status === 'open' ? 'Abierta' : 'Cerrada'}
-              </Badge>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                {!isVisible ? (
+                  <>
+                    <Badge variant="neutral">🟡 BORRADOR / OCULTA</Badge>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning-text, #e65100)', fontWeight: 600 }}>
+                      Solo organizadores
+                    </span>
+                  </>
+                ) : isOpen ? (
+                  <>
+                    <Badge variant="success">🟢 PUBLICADA Y ACTIVA</Badge>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success-text, #2e7d32)', fontWeight: 600 }}>
+                      Visible para familias
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Badge variant="neutral">🔴 CERRADA</Badge>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontWeight: 600 }}>
+                      Votación finalizada
+                    </span>
+                  </>
+                )}
+              </div>
             }
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+              {stage.description && (
+                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: '0.2rem 0' }}>
+                  {stage.description}
+                </p>
+              )}
+
               <div style={{ display: 'flex', gap: 'var(--spacing-3)', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', flexWrap: 'wrap' }}>
                 <span>Tipo: <strong>{stage.type}</strong></span>
                 <span>Respuestas: <strong>{stage.responseCount}</strong></span>
                 {stage.type === 'info' && <span>Lecturas: <strong>{stage.readCount}</strong></span>}
-                {stage.isSemanticallyLocked && <span>🔒 Preguntas protegidas</span>}
+                {stage.isSemanticallyLocked && <span style={{ color: 'var(--color-warning-text)' }}>🔒 Preguntas protegidas (ya tiene votos)</span>}
               </div>
 
               {stage.clarifications && stage.clarifications.length > 0 && (
@@ -548,6 +677,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
 
               {/* Botones de acción administrativa */}
               <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap', marginTop: 'var(--spacing-2)' }}>
+                {/* 1. Botón de Ver Avance en Vivo */}
                 <Button
                   variant={expandedStageId === stage.id ? 'secondary' : 'primary'}
                   onClick={() => handleToggleOverview(stage.id)}
@@ -556,24 +686,82 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                     padding: '0.25rem 0.75rem',
                     fontSize: 'var(--font-size-xs)',
                     fontWeight: 700,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
                   }}
                 >
-                  {expandedStageId === stage.id ? '✕ Ocultar panel de avance' : '📊 Ver avance y votación en vivo'}
+                  {expandedStageId === stage.id ? '✕ Ocultar avance' : '📊 Ver avance y votación'}
                 </Button>
 
-                {stage.status === 'open' ? (
+                {/* 2. Activar / Desactivar Etapa para Familias */}
+                {!isVisible ? (
+                  <Button
+                    variant="primary"
+                    onClick={() => handleToggleVisibility(stage.id, 'hidden')}
+                    disabled={loading}
+                    style={{
+                      minHeight: '32px',
+                      padding: '0.25rem 0.75rem',
+                      fontSize: 'var(--font-size-xs)',
+                      backgroundColor: 'var(--color-success, #2e7d32)',
+                      borderColor: 'var(--color-success, #2e7d32)',
+                      color: '#ffffff',
+                    }}
+                  >
+                    🚀 Activar para Familias
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleToggleVisibility(stage.id, 'visible')}
+                    disabled={loading}
+                    style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                  >
+                    ⏸ Ocultar a Familias
+                  </Button>
+                )}
+
+                {/* 3. Botón de Editar */}
+                <Button
+                  variant="outline"
+                  onClick={() => (isEditingForm ? setEditingStageId(null) : startEditing(stage))}
+                  style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                >
+                  {isEditingForm ? '✕ Cancelar edición' : '✏️ Editar etapa'}
+                </Button>
+
+                {/* 4. Subir / Bajar Orden */}
+                <div style={{ display: 'inline-flex', gap: '0.2rem' }}>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleMoveStage(stage.id, 'up')}
+                    disabled={index === 0 || loading}
+                    style={{ minHeight: '32px', padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
+                    title="Mover arriba"
+                  >
+                    ⬆
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleMoveStage(stage.id, 'down')}
+                    disabled={index === stages.length - 1 || loading}
+                    style={{ minHeight: '32px', padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
+                    title="Mover abajo"
+                  >
+                    ⬇
+                  </Button>
+                </div>
+
+                {/* 5. Cerrar / Reabrir */}
+                {isOpen ? (
                   <Button
                     variant="outline"
                     onClick={() => {
                       setActiveActionStageId(stage.id);
                       setActionType('close');
+                      setEditingStageId(null);
                     }}
                     style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
                   >
-                    Cerrar etapa
+                    Cerrar consulta
                   </Button>
                 ) : (
                   <Button
@@ -581,6 +769,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                     onClick={() => {
                       setActiveActionStageId(stage.id);
                       setActionType('reopen');
+                      setEditingStageId(null);
                     }}
                     style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
                   >
@@ -588,39 +777,166 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                   </Button>
                 )}
 
+                {/* 6. Aclaración */}
                 <Button
                   variant="secondary"
                   onClick={() => {
                     setActiveActionStageId(stage.id);
                     setActionType('clarify');
+                    setEditingStageId(null);
                   }}
                   style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
                 >
-                  + Agregar aclaración
+                  + Aclaración
                 </Button>
 
+                {/* 7. Publicar / Ocultar Resultados Consolidados */}
                 <Button
                   variant="outline"
                   onClick={() => {
                     setActiveActionStageId(stage.id);
                     setActionType('publish');
+                    setEditingStageId(null);
                   }}
                   style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
                 >
                   📢 Publicar resultados
                 </Button>
-
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setActiveActionStageId(stage.id);
-                    setActionType('unpublish');
-                  }}
-                  style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
-                >
-                  Ocultar publicación
-                </Button>
               </div>
+
+              {/* Formulario de EDICIÓN de etapa */}
+              {isEditingForm && (
+                <div
+                  style={{
+                    marginTop: 'var(--spacing-3)',
+                    padding: 'var(--spacing-4)',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '2px solid var(--color-primary)',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--spacing-3)',
+                  }}
+                >
+                  <strong style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
+                    ✏️ Editando: {stage.title}
+                  </strong>
+
+                  {editError && (
+                    <div
+                      style={{
+                        padding: 'var(--spacing-2) var(--spacing-3)',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: 'var(--color-error-surface, #ffebee)',
+                        color: 'var(--color-error-text, #c62828)',
+                        fontSize: 'var(--font-size-xs)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {editError}
+                    </div>
+                  )}
+
+                  <Input
+                    label="Título de la consulta"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    required
+                  />
+
+                  <Input
+                    label="Descripción o contexto"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                  />
+
+                  <Input
+                    label="Fecha y hora de cierre (dejar vacío para cierre manual)"
+                    type="datetime-local"
+                    value={editDeadline}
+                    onChange={(e) => setEditDeadline(e.target.value)}
+                  />
+
+                  {/* Opciones de respuesta si corresponde */}
+                  {(stage.type === 'single_choice' || stage.type === 'multiple_choice') && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 'var(--spacing-2)',
+                        padding: 'var(--spacing-3)',
+                        backgroundColor: 'var(--color-surface-subtle)',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
+                        Opciones de respuesta:
+                      </span>
+
+                      {stage.isSemanticallyLocked ? (
+                        <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning-text)', fontWeight: 600 }}>
+                          🔒 Ya se registraron votos de familias en esta consulta. Por seguridad de los resultados, las opciones no se pueden modificar.
+                        </div>
+                      ) : (
+                        <>
+                          {editOptions.map((opt, idx) => (
+                            <div key={idx} style={{ display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
+                              <Input
+                                label=""
+                                placeholder={`Opción ${idx + 1}`}
+                                value={opt}
+                                onChange={(e) => handleEditOptionChange(idx, e.target.value)}
+                              />
+                              {editOptions.length > 2 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditRemoveOption(idx)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--color-error-text, #c62828)',
+                                    cursor: 'pointer',
+                                    padding: '0.4rem',
+                                    fontSize: 'var(--font-size-sm)',
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          ))}
+
+                          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleEditAddOption}
+                              style={{ fontSize: 'var(--font-size-xs)', minHeight: '30px' }}
+                            >
+                              + Agregar opción
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-2)' }}>
+                    <Button type="button" variant="outline" onClick={() => setEditingStageId(null)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={() => handleSaveEdit(stage.id)}
+                      isLoading={editLoading}
+                    >
+                      Guardar Cambios
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Panel Visual de Avance y Votación en Vivo */}
               {expandedStageId === stage.id && (
@@ -647,7 +963,6 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
 
                       return (
                         <>
-                          {/* Encabezado con métricas y barra de progreso */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
                             <div>
                               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
@@ -660,7 +975,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
                               <Badge variant={overview.isPublished ? 'success' : 'neutral'}>
-                                {overview.isPublished ? '📢 Visible para familias' : '🔒 Privado (Solo comité)'}
+                                {overview.isPublished ? '📢 Resultados visibles para familias' : '🔒 Resultados privados (solo comité)'}
                               </Badge>
                               <Button
                                 variant="outline"
@@ -673,7 +988,6 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                             </div>
                           </div>
 
-                          {/* Barra de progreso de participación */}
                           <div style={{ width: '100%', height: '10px', backgroundColor: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
                             <div
                               style={{
@@ -699,14 +1013,14 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                               onClick={() => setActiveTab((prev) => ({ ...prev, [stage.id]: 'responses' }))}
                               style={{ fontSize: 'var(--font-size-xs)', padding: '0.25rem 0.6rem', minHeight: '30px' }}
                             >
-                              👥 Familias que votaron ({overview.familyResponsesList.length})
+                              👥 Familias que votaron ({overview.familyResponsesList?.length || 0})
                             </Button>
                             <Button
                               variant={currentTab === 'pending' ? 'primary' : 'outline'}
                               onClick={() => setActiveTab((prev) => ({ ...prev, [stage.id]: 'pending' }))}
                               style={{ fontSize: 'var(--font-size-xs)', padding: '0.25rem 0.6rem', minHeight: '30px' }}
                             >
-                              ⏳ Familias pendientes ({overview.pendingFamilies.length})
+                              ⏳ Familias pendientes ({overview.pendingFamilies?.length || 0})
                             </Button>
                           </div>
 
@@ -718,7 +1032,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                                   Aún no se han recibido votos para esta consulta.
                                 </div>
                               ) : (
-                                overview.breakdown.map((item: any) => (
+                                overview.breakdown?.map((item: any) => (
                                   <div
                                     key={item.optionId}
                                     style={{
@@ -774,15 +1088,15 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                             </div>
                           )}
 
-                          {/* Pestaña 2: Respuestas detalladas por familia */}
+                          {/* Pestaña 2: Respuestas detalladas */}
                           {currentTab === 'responses' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-                              {overview.familyResponsesList.length === 0 ? (
+                              {overview.familyResponsesList?.length === 0 ? (
                                 <div style={{ padding: 'var(--spacing-3)', textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: 'var(--font-size-sm)' }}>
                                   Ninguna familia ha respondido todavía.
                                 </div>
                               ) : (
-                                overview.familyResponsesList.map((resp: any) => (
+                                overview.familyResponsesList?.map((resp: any) => (
                                   <div
                                     key={resp.participantId}
                                     style={{
@@ -803,10 +1117,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                                         {new Date(resp.submittedAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })} · Versión {resp.version}
                                       </span>
                                     </div>
-
-                                    <Badge variant="info">
-                                      {resp.answersText}
-                                    </Badge>
+                                    <Badge variant="info">{resp.answersText}</Badge>
                                   </div>
                                 ))
                               )}
@@ -816,12 +1127,12 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                           {/* Pestaña 3: Familias pendientes */}
                           {currentTab === 'pending' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-                              {overview.pendingFamilies.length === 0 ? (
+                              {overview.pendingFamilies?.length === 0 ? (
                                 <div style={{ padding: 'var(--spacing-3)', textAlign: 'center', color: 'var(--color-success-text)', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
                                   🎉 ¡Todas las familias convocadas han respondido esta consulta!
                                 </div>
                               ) : (
-                                overview.pendingFamilies.map((fam: any) => (
+                                overview.pendingFamilies?.map((fam: any) => (
                                   <div
                                     key={fam.id}
                                     style={{
@@ -844,10 +1155,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                                         </span>
                                       )}
                                     </div>
-
-                                    <Badge variant="neutral">
-                                      Pendiente
-                                    </Badge>
+                                    <Badge variant="neutral">Pendiente</Badge>
                                   </div>
                                 ))
                               )}
@@ -860,77 +1168,92 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                 </div>
               )}
 
-              {/* Formulario de acción desplegado */}
-              {isEditingThis && actionType && (
+              {/* Formulario desplegable para acciones específicas (cerrar, reabrir, aclarar, publicar) */}
+              {isEditingThisAction && actionType && (
                 <div
                   style={{
                     marginTop: 'var(--spacing-3)',
                     padding: 'var(--spacing-3)',
                     backgroundColor: 'var(--color-surface-subtle)',
+                    border: '1px solid var(--color-border)',
                     borderRadius: 'var(--radius-md)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 'var(--spacing-2)',
                   }}
                 >
-                  <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
-                    {actionType === 'close' && 'Confirmar cierre manual de la consulta:'}
-                    {actionType === 'reopen' && 'Reapertura de consulta (requiere motivo):'}
-                    {actionType === 'clarify' && 'Nueva aclaración visible para las familias:'}
-                    {actionType === 'publish' && 'Publicar resultados consolidados a las familias:'}
-                    {actionType === 'unpublish' && '¿Retirar la publicación de resultados para las familias?'}
-                  </span>
+                  <strong style={{ fontSize: 'var(--font-size-xs)' }}>
+                    {actionType === 'close' && 'Cierre manual de la consulta'}
+                    {actionType === 'reopen' && 'Reapertura de la consulta'}
+                    {actionType === 'clarify' && 'Agregar aclaración oficial'}
+                    {actionType === 'publish' && 'Publicar resultados consolidados para las familias'}
+                    {actionType === 'unpublish' && 'Ocultar publicación de resultados'}
+                  </strong>
 
-                  {actionType === 'unpublish' ? (
-                    <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                      Los resultados dejarán de ser visibles para las familias inmediatamente.
-                    </p>
-                  ) : actionType === 'publish' ? (
+                  {actionType === 'close' && (
                     <Input
-                      label="Mensaje o conclusión del comité (opcional)"
+                      label="Motivo del cierre (opcional)"
+                      placeholder="Ej: Plazo cumplido o decisión adoptada"
                       value={reasonOrContent}
                       onChange={(e) => setReasonOrContent(e.target.value)}
-                      placeholder="Ej: Agradecemos la masiva participación. La opción ganadora es el menú tradicional."
-                    />
-                  ) : (
-                    <Input
-                      label={actionType === 'clarify' ? 'Texto de la aclaración' : 'Motivo'}
-                      value={reasonOrContent}
-                      onChange={(e) => setReasonOrContent(e.target.value)}
-                      placeholder={
-                        actionType === 'reopen'
-                          ? 'Ej: Se otorga prórroga de 48 hs para familias rezagadas'
-                          : 'Ingresá el detalle...'
-                      }
-                      required
                     />
                   )}
 
                   {actionType === 'reopen' && (
+                    <>
+                      <Input
+                        label="Motivo de reapertura (obligatorio)"
+                        placeholder="Ej: Corrección de opciones o extensión del plazo"
+                        value={reasonOrContent}
+                        onChange={(e) => setReasonOrContent(e.target.value)}
+                        required
+                      />
+                      <Input
+                        label="Nueva fecha límite (opcional)"
+                        type="datetime-local"
+                        value={newDeadline}
+                        onChange={(e) => setNewDeadline(e.target.value)}
+                      />
+                    </>
+                  )}
+
+                  {actionType === 'clarify' && (
                     <Input
-                      label="Nuevo vencimiento (opcional)"
-                      type="datetime-local"
-                      value={newDeadline}
-                      onChange={(e) => setNewDeadline(e.target.value)}
+                      label="Texto de la aclaración"
+                      placeholder="Ej: Aclaramos que la opción A incluye postre"
+                      value={reasonOrContent}
+                      onChange={(e) => setReasonOrContent(e.target.value)}
+                      required
                     />
                   )}
 
-                  <div style={{ display: 'flex', gap: 'var(--spacing-2)', justifyContent: 'flex-end', marginTop: 'var(--spacing-1)' }}>
+                  {actionType === 'publish' && (
+                    <Input
+                      label="Mensaje o nota para las familias (opcional)"
+                      placeholder="Ej: Compartimos los resultados finales de la votación"
+                      value={reasonOrContent}
+                      onChange={(e) => setReasonOrContent(e.target.value)}
+                    />
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)' }}>
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       onClick={() => {
                         setActiveActionStageId(null);
                         setActionType(null);
+                        setReasonOrContent('');
+                        setNewDeadline('');
                       }}
-                      style={{ minHeight: '32px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
+                      style={{ minHeight: '32px', fontSize: 'var(--font-size-xs)' }}
                     >
                       Cancelar
                     </Button>
                     <Button
                       variant="primary"
-                      isLoading={loading}
                       onClick={() => handleExecuteAction(stage.id)}
-                      style={{ minHeight: '32px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
+                      isLoading={loading}
+                      style={{ minHeight: '32px', fontSize: 'var(--font-size-xs)' }}
                     >
                       Confirmar
                     </Button>

@@ -23,7 +23,10 @@ export async function GET(
       .orderBy('order', 'asc')
       .get();
 
-    const stages = stagesSnap.docs.map((d) => d.data() as StageModel);
+    const stages = stagesSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as StageModel[];
     return NextResponse.json({ success: true, stages });
   } catch (error: any) {
     if (error instanceof AppError) {
