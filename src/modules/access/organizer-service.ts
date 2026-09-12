@@ -5,21 +5,27 @@ import { recordAuditEvent } from '../audit/service';
 
 import { NextRequest } from 'next/server';
 
-/**
- * Obtiene el contexto de organizador validando cookie de sesión o emulación en desarrollo.
- */
 export async function getOrganizerContextFromRequest(request: NextRequest): Promise<OrganizerSessionContext> {
+  const sessionCookie = request.cookies.get('organizer_session')?.value;
+  if (sessionCookie) {
+    try {
+      return await verifyOrganizerSessionCookie(sessionCookie);
+    } catch (err) {
+      // Si la cookie es inválida y estamos en desarrollo, probamos dev fallback
+      if (process.env.APP_ENV === 'production') throw err;
+    }
+  }
+
   const devEmail = request.headers.get('x-dev-organizer-email') || request.cookies.get('dev_organizer_email')?.value;
   if (process.env.APP_ENV !== 'production' && devEmail) {
     return {
-      organizerId: devEmail === 'organizador1@colegio.edu.uy' ? 'org_01' : 'org_02',
+      organizerId: devEmail === 'organizador1@colegio.edu.uy' ? 'org_01' : devEmail,
       email: devEmail,
-      name: devEmail === 'organizador1@colegio.edu.uy' ? 'Laura Méndez' : 'Martín Cabrera',
-      workspaceId: 'colegio-san-martin',
+      name: devEmail === 'organizador1@colegio.edu.uy' ? 'Laura Méndez' : devEmail.split('@')[0],
+      workspaceId: 'principal',
     };
   }
 
-  const sessionCookie = request.cookies.get('organizer_session')?.value;
   return await verifyOrganizerSessionCookie(sessionCookie);
 }
 
@@ -37,11 +43,10 @@ export async function verifyOrganizerSessionCookie(sessionCookie: string | undef
     return {
       organizerId: decodedClaims.uid,
       email: decodedClaims.email || '',
-      name: decodedClaims.name || decodedClaims.email || 'Organizador',
-      workspaceId: decodedClaims.workspaceId || 'colegio-san-martin', // default fallback for dev/seed
+      name: decodedClaims.name || decodedClaims.email?.split('@')[0] || 'Organizador',
+      workspaceId: decodedClaims.workspaceId || 'principal',
     };
   } catch (error) {
-    // Si falla o la sesión fue revocada en Auth
     throw new UnauthorizedError('Tu sesión de organizador expiró o no es válida.');
   }
 }
@@ -55,16 +60,23 @@ export async function validateOrganizerEventAccess(
   workspaceId: string
 ): Promise<EventOrganizer> {
   const db = getAdminDb();
-  const organizerRef = db
+  const organizersColl = db
     .collection('workspaces')
     .doc(workspaceId)
     .collection('events')
     .doc(eventId)
-    .collection('organizers')
-    .doc(context.organizerId);
+    .collection('organizers');
 
-  const doc = await organizerRef.get();
-  if (!doc.exists) {
+  let doc = await organizersColl.doc(context.organizerId).get();
+  if (!doc?.exists && context.email) {
+    // Buscar si fue registrado por correo
+    const emailSnap = await organizersColl.where('email', '==', context.email.toLowerCase()).get();
+    if (emailSnap.docs && emailSnap.docs.length > 0) {
+      doc = emailSnap.docs[0];
+    }
+  }
+
+  if (!doc || !doc.exists) {
     throw new ForbiddenError('No tenés asignado este evento en tu cuenta de organizador.');
   }
 

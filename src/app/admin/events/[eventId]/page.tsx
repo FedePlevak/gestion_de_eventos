@@ -1,14 +1,17 @@
 import React from 'react';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { Button } from '@/components/Button';
+import { getAdminDb } from '@/server/firebase-admin';
 import { StageAdminControls } from './StageAdminControls';
 import { PaymentAdminSection } from './PaymentAdminSection';
 import { WhatsAppAdminSection } from './WhatsAppAdminSection';
 import { SupportAdminSection } from './SupportAdminSection';
 import { ExportAdminSection } from './ExportAdminSection';
+import { ParticipantImportSection } from './ParticipantImportSection';
+import { OrganizerTeamSection } from './OrganizerTeamSection';
 
 interface PageProps {
   params: {
@@ -16,13 +19,121 @@ interface PageProps {
   };
 }
 
-export default function AdminEventDetailPage({ params }: PageProps) {
-  const isFiesta = params.eventId === 'fiesta-egresados-2026';
-  const eventName = isFiesta ? 'Fiesta de Fin de Año 2026' : 'Asamblea Anual de Padres 2026';
+export const dynamic = 'force-dynamic';
+
+export default async function AdminEventDetailPage({ params }: PageProps) {
+  const db = getAdminDb();
+  let workspaceId = 'principal';
+  let eventRef = db.collection('workspaces').doc(workspaceId).collection('events').doc(params.eventId);
+  let eventDoc = await eventRef.get();
+
+  // Si no está en principal, buscar en otros workspaces (ej. en caso de datos de tests)
+  if (!eventDoc.exists) {
+    const wsSnap = await db.collection('workspaces').get();
+    for (const ws of wsSnap.docs) {
+      const eDoc = await ws.ref.collection('events').doc(params.eventId).get();
+      if (eDoc.exists) {
+        workspaceId = ws.id;
+        eventRef = ws.ref.collection('events').doc(params.eventId);
+        eventDoc = eDoc;
+        break;
+      }
+    }
+  }
+
+  if (!eventDoc.exists) {
+    notFound();
+  }
+
+  const eventData = eventDoc.data()!;
+  const eventName = eventData.name || 'Evento sin título';
+
+  // 1. Obtener etapas
+  const stagesSnap = await eventRef.collection('stages').orderBy('order').get();
+  const stages = stagesSnap.docs.map((d) => {
+    const s = d.data();
+    return {
+      id: d.id,
+      title: s.title,
+      type: s.type,
+      status: s.status,
+      deadlineAt: s.deadlineAt || undefined,
+      responseCount: s.responseCount || 0,
+      readCount: s.readCount || 0,
+      isSemanticallyLocked: Boolean(s.isSemanticallyLocked),
+      clarifications: s.clarifications || [],
+    };
+  });
+
+  // 2. Obtener participantes activos
+  const partsSnap = await eventRef.collection('participants').where('status', '==', 'active').get();
+  const participants = partsSnap.docs.map((d) => ({
+    id: d.id,
+    familyId: d.data().familyId,
+    familyName: d.data().familyName,
+    contactPhone: d.data().contactPhone,
+    contactEmail: d.data().contactEmail,
+    secret: d.data().tokenHash,
+  }));
+
+  // 3. Obtener pagos
+  const paymentsSnap = await eventRef.collection('payments').get();
+  const paymentsMap = new Map<string, any>();
+  paymentsSnap.docs.forEach((d) => paymentsMap.set(d.id, d.data()));
+
+  const config = eventData.paymentConfig || {};
+  const expectedAmountMinor = config.expectedAmountMinor || 0;
+  const currency = config.currency || 'UYU';
+
+  let pendingCount = 0;
+  let reportedPendingCount = 0;
+  let reportedPendingAmountMinor = 0;
+  let verifiedCount = 0;
+  let verifiedTotalAmountMinor = 0;
+
+  const initialPayments = participants.map((p) => {
+    const pRecord = paymentsMap.get(p.id);
+    if (!pRecord || pRecord.status === 'pending') {
+      pendingCount++;
+    } else if (pRecord.status === 'reported') {
+      reportedPendingCount++;
+      reportedPendingAmountMinor += pRecord.declaredAmountMinor || expectedAmountMinor;
+    } else if (pRecord.status === 'verified') {
+      verifiedCount++;
+      verifiedTotalAmountMinor += pRecord.verifiedAmountMinor || expectedAmountMinor;
+    }
+    return {
+      id: p.id,
+      familyId: p.familyId,
+      familyName: p.familyName,
+      contactEmail: p.contactEmail,
+      payment: pRecord || undefined,
+    };
+  });
+
+  const initialSummary = {
+    totalFamilies: participants.length,
+    expectedAmountPerFamilyMinor: expectedAmountMinor,
+    currency,
+    totalExpectedAmountMinor: participants.length * expectedAmountMinor,
+    pendingCount,
+    reportedPendingCount,
+    reportedPendingAmountMinor,
+    requiresRevisionCount: 0,
+    verifiedCount,
+    verifiedTotalAmountMinor,
+  };
+
+  // 4. Obtener tickets de soporte
+  const ticketsSnap = await eventRef.collection('support_tickets').get();
+  const initialTickets = ticketsSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Header eventName={eventName} isOrganizer userBadge="organizador1@colegio.edu.uy" />
+      <Header eventName={eventName} isOrganizer />
       <main className="app-container">
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
           <Link
@@ -42,191 +153,54 @@ export default function AdminEventDetailPage({ params }: PageProps) {
           <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)' }}>
             {eventName}
           </h2>
+          {eventData.description && (
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
+              {eventData.description}
+            </p>
+          )}
           <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
-            <Badge variant="success">En curso</Badge>
-            <Badge variant="neutral">Zona: America/Montevideo</Badge>
-            <Badge variant="info">80 Familias convocadas</Badge>
+            <Badge variant="success">Activo</Badge>
+            <Badge variant="neutral">Zona: {eventData.timezone || 'America/Montevideo'}</Badge>
+            <Badge variant="info">{participants.length} Familias convocadas</Badge>
+            {eventData.eventDate && (
+              <Badge variant="neutral">
+                Fecha: {new Date(eventData.eventDate).toLocaleDateString('es-UY', { dateStyle: 'medium' })}
+              </Badge>
+            )}
           </div>
         </section>
 
-        {/* Resumen operativo de participación */}
-        <div
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-md)',
-            padding: 'var(--spacing-3) var(--spacing-4)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 'var(--spacing-2)',
-          }}
-        >
-          <div>
-            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>Participación de Familias</span>
-            <p style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-primary)' }}>
-              62 de 80 familias han respondido las consultas
-            </p>
-          </div>
-          <Badge variant="success">77.5% de respuesta</Badge>
-        </div>
+        {/* Sección 1: Convocatoria e Importación de Familias (Excel/CSV y manual) */}
+        <ParticipantImportSection eventId={params.eventId} />
 
-        {/* Sección de Etapas con controles administrativos reales */}
+        {/* Sección 2: Equipo Organizador del Evento */}
+        <OrganizerTeamSection eventId={params.eventId} />
+
+        {/* Sección 3: Etapas del Evento y Votación en Vivo */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>Etapas del Evento</h3>
+            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>Consultas y Etapas del Evento</h3>
           </div>
 
-          <StageAdminControls
-            eventId={params.eventId}
-            initialStages={[
-              {
-                id: 'etapa_menu',
-                title: '1. Elección del Plato Principal',
-                type: 'single_choice',
-                status: 'open',
-                deadlineAt: '2026-09-20T23:59:00Z',
-                responseCount: 62,
-                readCount: 0,
-                isSemanticallyLocked: true,
-                clarifications: [],
-              },
-            ]}
-          />
+          <StageAdminControls eventId={params.eventId} initialStages={stages} />
         </section>
 
-        {/* Sección de Pagos y Aportes Familiares */}
-        <PaymentAdminSection
-          eventId={params.eventId}
-          initialSummary={{
-            totalFamilies: 10,
-            expectedAmountPerFamilyMinor: 300000,
-            currency: 'UYU',
-            totalExpectedAmountMinor: 3000000,
-            pendingCount: 8,
-            reportedPendingCount: 1,
-            reportedPendingAmountMinor: 300000,
-            requiresRevisionCount: 0,
-            verifiedCount: 1,
-            verifiedTotalAmountMinor: 300000,
-          }}
-          initialPayments={[
-            {
-              id: 'part_fam_01',
-              familyId: 'fam_01',
-              familyName: 'Álvarez Pérez',
-              contactEmail: 'familia.alvarez@ejemplo.com',
-              payment: {
-                id: 'part_fam_01',
-                workspaceId: 'colegio-san-martin',
-                eventId: params.eventId,
-                participantId: 'part_fam_01',
-                familyId: 'fam_01',
-                familyName: 'Álvarez Pérez',
-                status: 'verified',
-                expectedAmountMinor: 300000,
-                currency: 'UYU',
-                verifiedAmountMinor: 300000,
-                verifiedAt: new Date().toISOString(),
-                verifiedBy: 'organizador1@colegio.edu.uy',
-                version: 1,
-                history: [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            },
-            {
-              id: 'part_fam_02',
-              familyId: 'fam_02',
-              familyName: 'Bianchi Gómez',
-              contactEmail: 'familia.bianchi@ejemplo.com',
-              payment: {
-                id: 'part_fam_02',
-                workspaceId: 'colegio-san-martin',
-                eventId: params.eventId,
-                participantId: 'part_fam_02',
-                familyId: 'fam_02',
-                familyName: 'Bianchi Gómez',
-                status: 'reported',
-                expectedAmountMinor: 300000,
-                currency: 'UYU',
-                declaredAmountMinor: 300000,
-                transferDate: new Date().toISOString().split('T')[0],
-                version: 1,
-                history: [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            },
-            {
-              id: 'part_fam_03',
-              familyId: 'fam_03',
-              familyName: 'Cardozo Silva',
-              contactEmail: 'familia.cardozo@ejemplo.com',
-            },
-          ]}
-        />
+        {/* Sección 4: Asistente de Comunicación y Enlaces WhatsApp */}
+        <WhatsAppAdminSection eventName={eventName} participants={participants} />
 
-        {/* Asistente de Comunicación y Plantillas WhatsApp (Regla S03) */}
-        <WhatsAppAdminSection
-          eventName={eventName}
-          participants={[
-            {
-              id: 'part_fam_01',
-              familyId: 'fam_01',
-              familyName: 'Álvarez Pérez',
-              contactPhone: '+59899123456',
-              contactEmail: 'familia.alvarez@ejemplo.com',
-              secret: '746e4acf710336dddc48cc8872b4957e03e296bc25744cc4cef38085f1d9cb37',
-            },
-            {
-              id: 'part_fam_02',
-              familyId: 'fam_02',
-              familyName: 'Bianchi Gómez',
-              contactPhone: '+59899234567',
-              contactEmail: 'familia.bianchi@ejemplo.com',
-              secret: 'd04aff7f63189262983e5ce0599645663a61d8bbf307915b5c20257d937eaee8',
-            },
-            {
-              id: 'part_fam_03',
-              familyId: 'fam_03',
-              familyName: 'Cardozo Silva',
-              contactPhone: '+59899345678',
-              contactEmail: 'familia.cardozo@ejemplo.com',
-            },
-          ]}
-        />
+        {/* Sección 5: Pagos y Aportes Financieros (si está habilitado) */}
+        {config.enabled && (
+          <PaymentAdminSection
+            eventId={params.eventId}
+            initialSummary={initialSummary}
+            initialPayments={initialPayments}
+          />
+        )}
 
-        {/* Mesa de Ayuda y Consultas Familiares (Reglas S01, S02) */}
-        <SupportAdminSection
-          eventId={params.eventId}
-          initialTickets={[
-            {
-              id: 'ticket_demo_01',
-              workspaceId: 'colegio-san-martin',
-              eventId: params.eventId,
-              participantId: 'part_fam_01',
-              familyId: 'fam_01',
-              familyName: 'Álvarez Pérez',
-              subject: 'Consulta menú celíaco',
-              description: 'Hola, queríamos consultar si el menú de celíacos incluye postre sin TACC.',
-              status: 'new',
-              internalNotes: [
-                {
-                  id: 'note_1',
-                  authorEmail: 'organizador1@colegio.edu.uy',
-                  note: 'Verificado con el servicio de catering, sí incluye postre especial.',
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-              createdAt: new Date(Date.now() - 3600000).toISOString(),
-              updatedAt: new Date(Date.now() - 1800000).toISOString(),
-            },
-          ]}
-        />
+        {/* Sección 6: Mesa de Ayuda y Consultas Familiares */}
+        <SupportAdminSection eventId={params.eventId} initialTickets={initialTickets} />
 
-        {/* Exportación y Conciliación Final (Incremento 5) */}
+        {/* Sección 7: Exportación y Descarga de Planillas (RFC 4180 / Excel UTF-8 BOM) */}
         <ExportAdminSection eventId={params.eventId} />
       </main>
     </div>
