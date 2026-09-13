@@ -668,23 +668,23 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
                 {!isVisible ? (
                   <>
-                    <Badge variant="neutral">🟡 BORRADOR / OCULTA</Badge>
-                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning-text, #e65100)', fontWeight: 600 }}>
+                    <Badge variant="neutral">Borrador · Oculta</Badge>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning-text)', fontWeight: 600 }}>
                       Solo organizadores
                     </span>
                   </>
                 ) : isOpen ? (
                   <>
-                    <Badge variant="success">🟢 PUBLICADA Y ACTIVA</Badge>
-                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success-text, #2e7d32)', fontWeight: 600 }}>
+                    <Badge variant="success">Publicada y activa</Badge>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success-text)', fontWeight: 600 }}>
                       Visible para familias
                     </span>
                   </>
                 ) : (
                   <>
-                    <Badge variant="neutral">🔴 CERRADA</Badge>
+                    <Badge variant="neutral">Cerrada</Badge>
                     <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontWeight: 600 }}>
-                      Votación finalizada
+                      Consulta finalizada
                     </span>
                   </>
                 )}
@@ -700,14 +700,18 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
 
               <div style={{ display: 'flex', gap: 'var(--spacing-3)', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', flexWrap: 'wrap' }}>
                 <span>Tipo: <strong>{stage.type}</strong></span>
-                <span>Respuestas: <strong>{stage.responseCount}</strong></span>
-                {stage.type === 'info' && <span>Lecturas: <strong>{stage.readCount}</strong></span>}
-                {stage.isSemanticallyLocked && <span style={{ color: 'var(--color-warning-text)' }}>🔒 Preguntas protegidas (ya tiene votos)</span>}
+                <span>Respuestas: <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{stage.responseCount}</strong></span>
+                {stage.type === 'info' && <span>Lecturas: <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{stage.readCount}</strong></span>}
+                {stage.isSemanticallyLocked && (
+                  <span style={{ color: 'var(--color-warning-text)', fontWeight: 600 }}>
+                    Preguntas protegidas (ya tiene votos)
+                  </span>
+                )}
               </div>
 
               {stage.clarifications && stage.clarifications.length > 0 && (
                 <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning-text)' }}>
-                  📌 {stage.clarifications.length} aclaración{stage.clarifications.length > 1 ? 'es' : ''} añadida{stage.clarifications.length > 1 ? 's' : ''}
+                  {stage.clarifications.length} aclaración{stage.clarifications.length > 1 ? 'es' : ''} añadida{stage.clarifications.length > 1 ? 's' : ''}
                 </div>
               )}
 
@@ -718,13 +722,13 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                   variant={expandedStageId === stage.id ? 'secondary' : 'primary'}
                   onClick={() => handleToggleOverview(stage.id)}
                   style={{
-                    minHeight: '32px',
-                    padding: '0.25rem 0.75rem',
+                    minHeight: 'var(--touch-target-min)',
+                    padding: '0.35rem 0.75rem',
                     fontSize: 'var(--font-size-xs)',
                     fontWeight: 700,
                   }}
                 >
-                  {expandedStageId === stage.id ? '✕ Ocultar avance' : '📊 Ver avance y votación'}
+                  {expandedStageId === stage.id ? 'Ocultar avance' : 'Ver avance'}
                 </Button>
 
                 {/* 2. Activar / Desactivar Etapa para Familias */}
@@ -734,24 +738,25 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                     onClick={() => handleToggleVisibility(stage.id, 'hidden')}
                     disabled={loading}
                     style={{
-                      minHeight: '32px',
-                      padding: '0.25rem 0.75rem',
+                      minHeight: 'var(--touch-target-min)',
+                      padding: '0.35rem 0.75rem',
                       fontSize: 'var(--font-size-xs)',
-                      backgroundColor: 'var(--color-success, #2e7d32)',
-                      borderColor: 'var(--color-success, #2e7d32)',
-                      color: '#ffffff',
                     }}
                   >
-                    🚀 Activar para Familias
+                    Activar para familias
                   </Button>
                 ) : (
                   <Button
                     variant="secondary"
                     onClick={() => handleToggleVisibility(stage.id, 'visible')}
                     disabled={loading}
-                    style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                    style={{
+                      minHeight: 'var(--touch-target-min)',
+                      padding: '0.35rem 0.75rem',
+                      fontSize: 'var(--font-size-xs)',
+                    }}
                   >
-                    ⏸ Ocultar a Familias
+                    Ocultar a familias
                   </Button>
                 )}
 
@@ -759,30 +764,46 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                 <Button
                   variant="outline"
                   onClick={() => (isEditingForm ? setEditingStageId(null) : startEditing(stage))}
-                  style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                  style={{
+                    minHeight: 'var(--touch-target-min)',
+                    padding: '0.35rem 0.75rem',
+                    fontSize: 'var(--font-size-xs)',
+                  }}
                 >
-                  {isEditingForm ? '✕ Cancelar edición' : '✏️ Editar etapa'}
+                  {isEditingForm ? 'Cancelar edición' : 'Editar consulta'}
                 </Button>
 
                 {/* 4. Subir / Bajar Orden */}
-                <div style={{ display: 'inline-flex', gap: '0.2rem' }}>
+                <div style={{ display: 'inline-flex', gap: '0.25rem' }}>
                   <Button
                     variant="outline"
                     onClick={() => handleMoveStage(stage.id, 'up')}
                     disabled={index === 0 || loading}
-                    style={{ minHeight: '32px', padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
-                    title="Mover arriba"
+                    style={{
+                      minHeight: 'var(--touch-target-min)',
+                      minWidth: '40px',
+                      padding: '0.35rem 0.5rem',
+                      fontSize: 'var(--font-size-sm)',
+                    }}
+                    title="Subir orden"
+                    aria-label="Subir orden"
                   >
-                    ⬆
+                    ↑
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => handleMoveStage(stage.id, 'down')}
                     disabled={index === stages.length - 1 || loading}
-                    style={{ minHeight: '32px', padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
-                    title="Mover abajo"
+                    style={{
+                      minHeight: 'var(--touch-target-min)',
+                      minWidth: '40px',
+                      padding: '0.35rem 0.5rem',
+                      fontSize: 'var(--font-size-sm)',
+                    }}
+                    title="Bajar orden"
+                    aria-label="Bajar orden"
                   >
-                    ⬇
+                    ↓
                   </Button>
                 </div>
 
@@ -795,7 +816,11 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                       setActionType('close');
                       setEditingStageId(null);
                     }}
-                    style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                    style={{
+                      minHeight: 'var(--touch-target-min)',
+                      padding: '0.35rem 0.75rem',
+                      fontSize: 'var(--font-size-xs)',
+                    }}
                   >
                     Cerrar consulta
                   </Button>
@@ -807,7 +832,11 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                       setActionType('reopen');
                       setEditingStageId(null);
                     }}
-                    style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                    style={{
+                      minHeight: 'var(--touch-target-min)',
+                      padding: '0.35rem 0.75rem',
+                      fontSize: 'var(--font-size-xs)',
+                    }}
                   >
                     Reabrir consulta
                   </Button>
@@ -821,9 +850,13 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                     setActionType('clarify');
                     setEditingStageId(null);
                   }}
-                  style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                  style={{
+                    minHeight: 'var(--touch-target-min)',
+                    padding: '0.35rem 0.75rem',
+                    fontSize: 'var(--font-size-xs)',
+                  }}
                 >
-                  + Aclaración
+                  Agregar aclaración
                 </Button>
 
                 {/* 7. Publicar / Ocultar Resultados Consolidados */}
@@ -834,9 +867,13 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                     setActionType('publish');
                     setEditingStageId(null);
                   }}
-                  style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                  style={{
+                    minHeight: 'var(--touch-target-min)',
+                    padding: '0.35rem 0.75rem',
+                    fontSize: 'var(--font-size-xs)',
+                  }}
                 >
-                  📢 Publicar resultados
+                  Publicar resultados
                 </Button>
               </div>
 

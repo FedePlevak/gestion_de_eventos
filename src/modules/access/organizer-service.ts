@@ -5,41 +5,80 @@ import { recordAuditEvent } from '../audit/service';
 
 import { NextRequest } from 'next/server';
 
-export async function getOrganizerContextFromRequest(request: NextRequest): Promise<OrganizerSessionContext> {
-  const sessionCookie = request.cookies.get('organizer_session')?.value;
+export async function getOrganizerContextFromCookies(
+  cookieStore: { get: (name: string) => { value: string } | undefined },
+  headersList?: { get: (name: string) => string | null }
+): Promise<OrganizerSessionContext> {
+  const sessionCookie = cookieStore.get('organizer_session')?.value;
   if (sessionCookie) {
     try {
-      return await verifyOrganizerSessionCookie(sessionCookie);
+      return await verifyOrganizerSessionCookie(sessionCookie, false);
     } catch (err) {
       // Si la cookie es inválida y estamos en desarrollo, probamos dev fallback
       if (process.env.APP_ENV === 'production') throw err;
     }
   }
 
-  const devEmail = request.headers.get('x-dev-organizer-email') || request.cookies.get('dev_organizer_email')?.value;
+  const devEmail =
+    headersList?.get('x-dev-organizer-email') ||
+    cookieStore.get('dev_organizer_email')?.value ||
+    cookieStore.get('organizer_email')?.value;
+
   if (process.env.APP_ENV !== 'production' && devEmail) {
+    let workspaceId = 'principal';
+    let organizerId = devEmail;
+    let name = devEmail.split('@')[0];
+
+    try {
+      const db = getAdminDb();
+      const dirDoc = await db.collection('organizer_directory').doc(devEmail.toLowerCase()).get();
+      if (dirDoc.exists) {
+        const dData = dirDoc.data()!;
+        if (dData.workspaceId) workspaceId = dData.workspaceId;
+        if (dData.uid) organizerId = dData.uid;
+        if (dData.name) name = dData.name;
+      } else if (devEmail === 'organizador1@colegio.edu.uy') {
+        workspaceId = 'colegio-san-martin';
+        organizerId = 'org_01';
+        name = 'Laura Méndez';
+      }
+    } catch {
+      if (devEmail === 'organizador1@colegio.edu.uy') {
+        workspaceId = 'colegio-san-martin';
+        organizerId = 'org_01';
+        name = 'Laura Méndez';
+      }
+    }
+
     return {
-      organizerId: devEmail === 'organizador1@colegio.edu.uy' ? 'org_01' : devEmail,
+      organizerId,
       email: devEmail,
-      name: devEmail === 'organizador1@colegio.edu.uy' ? 'Laura Méndez' : devEmail.split('@')[0],
-      workspaceId: 'principal',
+      name,
+      workspaceId,
     };
   }
 
-  return await verifyOrganizerSessionCookie(sessionCookie);
+  return await verifyOrganizerSessionCookie(sessionCookie, false);
+}
+
+export async function getOrganizerContextFromRequest(request: NextRequest): Promise<OrganizerSessionContext> {
+  return getOrganizerContextFromCookies(request.cookies, request.headers);
 }
 
 /**
  * Valida el token o cookie de sesión de organizador con Firebase Auth y obtiene su perfil.
  */
-export async function verifyOrganizerSessionCookie(sessionCookie: string | undefined): Promise<OrganizerSessionContext> {
+export async function verifyOrganizerSessionCookie(
+  sessionCookie: string | undefined,
+  checkRevoked: boolean = false
+): Promise<OrganizerSessionContext> {
   if (!sessionCookie) {
     throw new UnauthorizedError('Se requiere iniciar sesión como organizador.');
   }
 
   try {
     const auth = getAdminAuth();
-    const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+    const decodedClaims = await auth.verifySessionCookie(sessionCookie, checkRevoked);
     return {
       organizerId: decodedClaims.uid,
       email: decodedClaims.email || '',

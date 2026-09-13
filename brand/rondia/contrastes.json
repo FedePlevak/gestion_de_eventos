@@ -1,0 +1,98 @@
+[
+  {
+    "uso": "Botón principal",
+    "frente": "#FFFFFF",
+    "fondo": "#173F35",
+    "ratio": 11.67,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Lectura",
+    "frente": "#203B34",
+    "fondo": "#F6F3EA",
+    "ratio": 10.9,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Ayuda sobre papel",
+    "frente": "#52645D",
+    "fondo": "#FFFFFF",
+    "ratio": 6.29,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Ayuda sobre marfil",
+    "frente": "#52645D",
+    "fondo": "#F6F3EA",
+    "ratio": 5.67,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Coral con texto oscuro",
+    "frente": "#0E2C25",
+    "fondo": "#F37556",
+    "ratio": 5.33,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Brote con texto bosque",
+    "frente": "#173F35",
+    "fondo": "#D8EBA3",
+    "ratio": 9.08,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Informado",
+    "frente": "#30557C",
+    "fondo": "#EAF0FA",
+    "ratio": 6.75,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Revisión",
+    "frente": "#795014",
+    "fondo": "#FFF2D9",
+    "ratio": 6.38,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Recibido",
+    "frente": "#24543A",
+    "fondo": "#EAF4EC",
+    "ratio": 7.76,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Error",
+    "frente": "#9A3829",
+    "fondo": "#FBEAE6",
+    "ratio": 6.06,
+    "minimo": 4.5,
+    "cumple": true
+  },
+  {
+    "uso": "Borde de input",
+    "frente": "#75877E",
+    "fondo": "#FFFFFF",
+    "ratio": 3.8,
+    "minimo": 3,
+    "cumple": true
+  },
+  {
+    "uso": "Foco en marfil",
+    "frente": "#173F35",
+    "fondo": "#F6F3EA",
+    "ratio": 10.52,
+    "minimo": 3,
+    "cumple": true
+  }
+]

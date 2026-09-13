@@ -63,33 +63,41 @@ export const StageCountdown: React.FC<StageCountdownProps> = ({
 
   if (!isValidDate) return null;
 
-  const formattedShortDate = targetDate.toLocaleDateString('es-UY', {
-    timeZone: timezone,
-    day: 'numeric',
-    month: 'short',
-  }) + ' ' + targetDate.toLocaleTimeString('es-UY', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-  }) + ' hs';
+  const formattedShortDate =
+    targetDate.toLocaleDateString('es-UY', {
+      timeZone: timezone,
+      day: 'numeric',
+      month: 'short',
+    }) +
+    ', ' +
+    targetDate.toLocaleTimeString('es-UY', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+    }) +
+    ' h';
 
-  const formattedLongDate = targetDate.toLocaleDateString('es-UY', {
-    timeZone: timezone,
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }) + ' a las ' + targetDate.toLocaleTimeString('es-UY', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-  }) + ' hs';
+  const formattedLongDate =
+    targetDate.toLocaleDateString('es-UY', {
+      timeZone: timezone,
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }) +
+    ' a las ' +
+    targetDate.toLocaleTimeString('es-UY', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+    }) +
+    ' h';
 
   const expired = isClosed || timeLeft.isExpired;
   const isUrgent = !expired && timeLeft.days === 0 && timeLeft.hours < 2;
   const isWarning = !expired && timeLeft.days === 0 && timeLeft.hours < 12;
 
-  // 1. Variante compacta (para tarjetas en listas / dashboard mobile)
+  // 1. Variante compacta (para tarjetas en listas / resumen mobile)
   if (variant === 'compact') {
     if (!mounted) {
       return (
@@ -97,16 +105,34 @@ export const StageCountdown: React.FC<StageCountdownProps> = ({
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.3rem',
             fontSize: 'var(--font-size-xs)',
             fontWeight: 600,
             padding: '0.2rem 0.55rem',
-            borderRadius: '999px',
-            backgroundColor: 'rgba(100, 116, 139, 0.08)',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-surface-subtle)',
             color: 'var(--color-text-subtle)',
           }}
         >
-          📅 Cierre: {formattedShortDate}
+          Cierre: {formattedShortDate}
+        </span>
+      );
+    }
+
+    if (isClosed) {
+      return (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            fontSize: 'var(--font-size-xs)',
+            fontWeight: 600,
+            padding: '0.2rem 0.55rem',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-surface-subtle)',
+            color: 'var(--color-text-subtle)',
+          }}
+        >
+          Consulta cerrada
         </span>
       );
     }
@@ -117,36 +143,38 @@ export const StageCountdown: React.FC<StageCountdownProps> = ({
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.3rem',
             fontSize: 'var(--font-size-xs)',
             fontWeight: 600,
             padding: '0.2rem 0.55rem',
-            borderRadius: '999px',
-            backgroundColor: 'rgba(100, 116, 139, 0.1)',
-            color: 'var(--color-text-subtle)',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-warning-bg)',
+            color: 'var(--color-warning-text)',
           }}
         >
-          ⌛ Plazo finalizado
+          Plazo finalizado
         </span>
       );
     }
 
-    // Badge con color según urgencia
     const badgeBg = isUrgent
-      ? 'rgba(239, 68, 68, 0.12)'
+      ? 'var(--color-danger-bg)'
       : isWarning
-      ? 'rgba(245, 158, 11, 0.12)'
-      : 'rgba(59, 130, 246, 0.1)';
+      ? 'var(--color-warning-bg)'
+      : 'var(--color-primary-light)';
 
-    const badgeColor = isUrgent ? '#b91c1c' : isWarning ? '#b45309' : '#1d4ed8';
+    const badgeColor = isUrgent
+      ? 'var(--color-danger-text)'
+      : isWarning
+      ? 'var(--color-warning-text)'
+      : 'var(--color-primary)';
 
     let countdownText = '';
     if (timeLeft.days > 0) {
-      countdownText = `${timeLeft.days}d ${timeLeft.hours}h restantes`;
+      countdownText = `${timeLeft.days} d ${timeLeft.hours} h restantes`;
     } else if (timeLeft.hours > 0) {
-      countdownText = `${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s`;
+      countdownText = `${timeLeft.hours} h ${timeLeft.minutes} m restantes`;
     } else {
-      countdownText = `${timeLeft.minutes}m ${timeLeft.seconds}s restantes`;
+      countdownText = `${timeLeft.minutes} m ${timeLeft.seconds} s restantes`;
     }
 
     return (
@@ -155,43 +183,41 @@ export const StageCountdown: React.FC<StageCountdownProps> = ({
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '0.35rem',
           fontSize: 'var(--font-size-xs)',
-          fontWeight: 700,
-          padding: '0.22rem 0.6rem',
-          borderRadius: '999px',
+          fontWeight: 600,
+          padding: '0.2rem 0.55rem',
+          borderRadius: 'var(--radius-full)',
           backgroundColor: badgeBg,
           color: badgeColor,
           whiteSpace: 'nowrap',
         }}
         title={`Cierre programado: ${formattedLongDate}`}
       >
-        <span>{isUrgent ? '🚨' : '⏳'}</span>
-        <span>{countdownText}</span>
+        {countdownText}
       </span>
     );
   }
 
-  // 2. Variante detallada (banner interactivo first-mobile dentro de la etapa)
+  // 2. Variante detallada
   return (
     <div
       className={className}
       style={{
         borderRadius: 'var(--radius-lg)',
-        border: expired
+        border: isClosed || expired
           ? '1px solid var(--color-border)'
           : isUrgent
-          ? '1px solid #f87171'
+          ? '1px solid var(--color-danger-border)'
           : isWarning
-          ? '1px solid #fbbf24'
-          : '1px solid var(--color-primary-light, #bfdbfe)',
-        backgroundColor: expired
-          ? 'rgba(100, 116, 139, 0.04)'
+          ? '1px solid var(--color-warning-border)'
+          : '1px solid var(--color-border)',
+        backgroundColor: isClosed || expired
+          ? 'var(--color-surface-subtle)'
           : isUrgent
-          ? 'rgba(254, 242, 242, 0.8)'
+          ? 'var(--color-danger-bg)'
           : isWarning
-          ? 'rgba(255, 251, 235, 0.8)'
-          : 'rgba(239, 246, 255, 0.8)',
+          ? 'var(--color-warning-bg)'
+          : 'var(--color-primary-light)',
         padding: 'var(--spacing-3) var(--spacing-4)',
         display: 'flex',
         flexDirection: 'column',
@@ -203,22 +229,26 @@ export const StageCountdown: React.FC<StageCountdownProps> = ({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-        <span style={{ fontSize: '1.1rem' }}>{expired ? '⌛' : isUrgent ? '🚨' : '⏰'}</span>
-        <span
+        <strong
           style={{
-            fontSize: 'var(--font-size-xs)',
-            fontWeight: 800,
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase',
-            color: expired ? 'var(--color-text-subtle)' : isUrgent ? '#b91c1c' : isWarning ? '#b45309' : 'var(--color-primary)',
+            fontSize: 'var(--font-size-sm)',
+            color: isClosed || expired
+              ? 'var(--color-text-subtle)'
+              : isUrgent
+              ? 'var(--color-danger-text)'
+              : isWarning
+              ? 'var(--color-warning-text)'
+              : 'var(--color-primary)',
           }}
         >
-          {expired
-            ? 'Plazo de participación cerrado'
+          {isClosed
+            ? 'Consulta cerrada'
+            : expired
+            ? 'Plazo finalizado'
             : isUrgent
-            ? '¡Último momento para votar!'
-            : 'Tiempo restante para participar'}
-        </span>
+            ? 'Últimas horas para responder'
+            : 'Tiempo disponible para responder'}
+        </strong>
       </div>
 
       {!expired ? (
@@ -229,136 +259,102 @@ export const StageCountdown: React.FC<StageCountdownProps> = ({
             alignItems: 'center',
             gap: '0.35rem',
             width: '100%',
-            maxWidth: '340px',
+            maxWidth: '320px',
             margin: '0.2rem 0',
           }}
         >
-          {/* Bloque Días */}
+          {/* Días */}
           <div
             style={{
               flex: 1,
-              minWidth: '52px',
               padding: '0.35rem 0.25rem',
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
             <div
               style={{
-                fontSize: '1.4rem',
-                fontWeight: 800,
-                lineHeight: 1.1,
-                color: isUrgent ? '#b91c1c' : 'var(--color-primary)',
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                color: 'var(--color-text-main)',
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
               {String(timeLeft.days).padStart(2, '0')}
             </div>
-            <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-subtle)', marginTop: '2px' }}>
-              DÍAS
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-subtle)' }}>
+              días
             </div>
           </div>
 
-          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-subtle)' }}>:</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text-subtle)' }}>:</span>
 
-          {/* Bloque Horas */}
+          {/* Horas */}
           <div
             style={{
               flex: 1,
-              minWidth: '52px',
               padding: '0.35rem 0.25rem',
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
             <div
               style={{
-                fontSize: '1.4rem',
-                fontWeight: 800,
-                lineHeight: 1.1,
-                color: isUrgent ? '#b91c1c' : 'var(--color-primary)',
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                color: 'var(--color-text-main)',
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
               {String(timeLeft.hours).padStart(2, '0')}
             </div>
-            <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-subtle)', marginTop: '2px' }}>
-              HORAS
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-subtle)' }}>
+              horas
             </div>
           </div>
 
-          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-subtle)' }}>:</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text-subtle)' }}>:</span>
 
-          {/* Bloque Minutos */}
+          {/* Minutos */}
           <div
             style={{
               flex: 1,
-              minWidth: '52px',
               padding: '0.35rem 0.25rem',
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
             <div
               style={{
-                fontSize: '1.4rem',
-                fontWeight: 800,
-                lineHeight: 1.1,
-                color: isUrgent ? '#b91c1c' : 'var(--color-primary)',
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                color: 'var(--color-text-main)',
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
               {String(timeLeft.minutes).padStart(2, '0')}
             </div>
-            <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-subtle)', marginTop: '2px' }}>
-              MIN
-            </div>
-          </div>
-
-          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-subtle)' }}>:</span>
-
-          {/* Bloque Segundos */}
-          <div
-            style={{
-              flex: 1,
-              minWidth: '52px',
-              padding: '0.35rem 0.25rem',
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '1.4rem',
-                fontWeight: 800,
-                lineHeight: 1.1,
-                color: isUrgent ? '#b91c1c' : 'var(--color-primary)',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {String(timeLeft.seconds).padStart(2, '0')}
-            </div>
-            <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-subtle)', marginTop: '2px' }}>
-              SEG
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-subtle)' }}>
+              min
             </div>
           </div>
         </div>
       ) : (
-        <p style={{ margin: '0.2rem 0', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-          Esta consulta cerró el {formattedLongDate}. Ya no se admiten nuevas respuestas.
+        <p style={{ margin: '0.2rem 0', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+          {isClosed
+            ? 'El comité cerró la recepción de respuestas.'
+            : 'El plazo fijado ha concluido. Podés consultar lo que quedó guardado.'}
         </p>
       )}
 
-      <p style={{ margin: 0, fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-        📅 Cierre fijado: <strong>{formattedLongDate}</strong>
+      <p style={{ margin: 0, fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+        Fecha de cierre: <strong>{formattedLongDate}</strong>
       </p>
     </div>
   );

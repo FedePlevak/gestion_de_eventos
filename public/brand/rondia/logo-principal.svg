@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 326 70" role="img" aria-label="Rondia"><title>Rondia</title><path d="M43 13 A23 23 0 1 0 52 41" fill="none" stroke="#173F35" stroke-width="10" stroke-linecap="round"/><circle cx="54" cy="19" r="6" fill="#F37556"/><g fill="none" stroke="#173F35" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M91 54 V26 M91 38 Q94 23 109 27"/>
+    <ellipse cx="137" cy="40" rx="15" ry="16"/>
+    <path d="M168 55 V26 M168 38 Q168 24 182 24 Q196 24 196 39 V55"/>
+    <ellipse cx="226" cy="40" rx="15" ry="16"/><path d="M241 40 V10"/>
+    <path d="M261 27 V55"/>
+    <ellipse cx="295" cy="40" rx="15" ry="16"/><path d="M310 27 V55"/>
+    </g><circle cx="261" cy="11" r="4.5" fill="#173F35"/></svg>

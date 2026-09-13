@@ -5,9 +5,16 @@ export type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 interface BadgeProps {
   children: React.ReactNode;
   variant?: BadgeVariant;
+  style?: React.CSSProperties;
+  className?: string;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ children, variant = 'neutral' }) => {
+export const Badge: React.FC<BadgeProps> = ({
+  children,
+  variant = 'neutral',
+  style,
+  className = '',
+}) => {
   const stylesByVariant: Record<BadgeVariant, React.CSSProperties> = {
     success: {
       backgroundColor: 'var(--color-success-bg)',
@@ -32,23 +39,26 @@ export const Badge: React.FC<BadgeProps> = ({ children, variant = 'neutral' }) =
     neutral: {
       backgroundColor: 'var(--color-surface-subtle)',
       borderColor: 'var(--color-border)',
-      color: 'var(--color-text-muted)',
+      color: 'var(--color-text-main)',
     },
   };
 
   return (
     <span
+      className={className}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         padding: '0.25rem 0.625rem',
         borderRadius: 'var(--radius-full)',
         fontSize: 'var(--font-size-xs)',
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
+        fontWeight: 600,
+        lineHeight: 1.3,
         border: '1px solid transparent',
+        wordBreak: 'break-word',
+        maxWidth: '100%',
         ...stylesByVariant[variant],
+        ...style,
       }}
     >
       {children}

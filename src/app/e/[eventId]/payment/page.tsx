@@ -87,20 +87,20 @@ export default async function FamilyPaymentPage({ params }: PageProps) {
         </div>
 
         <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-          <div style={{ display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
-            <Badge variant="info">Aporte Único por Familia</Badge>
+          <div>
+            <Badge variant="info">Aporte único por familia</Badge>
           </div>
-          <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)' }}>
-            Cuota o Aporte de la Fiesta
+          <h2 style={{ fontFamily: 'var(--font-editorial)', fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-primary)' }}>
+            Cuota o aporte del evento
           </h2>
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-            Importe fijado: <strong>${(expectedAmountMinor / 100).toLocaleString('es-UY')} {currency}</strong>
+            Importe sugerido: <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${(expectedAmountMinor / 100).toLocaleString('es-UY')} {currency}</strong>
           </p>
         </section>
 
         {/* Instrucciones Bancarias */}
         {bankInstructions && (
-          <Card title="Datos para la Transferencia Bancaria">
+          <Card title="Datos para la transferencia bancaria">
             <div
               style={{
                 display: 'flex',
@@ -111,12 +111,24 @@ export default async function FamilyPaymentPage({ params }: PageProps) {
               }}
             >
               <p><strong>Banco:</strong> {bankInstructions.bankName}</p>
-              <p><strong>Titular de la cuenta:</strong> {bankInstructions.accountHolder}</p>
-              <p><strong>Número de Cuenta:</strong> {bankInstructions.accountNumber}</p>
-              {bankInstructions.alias && <p><strong>Alias / CBU:</strong> {bankInstructions.alias}</p>}
+              <p><strong>Titular:</strong> {bankInstructions.accountHolder}</p>
+              <p>
+                <strong>Número de cuenta:</strong>{' '}
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace', fontWeight: 600 }}>
+                  {bankInstructions.accountNumber}
+                </span>
+              </p>
+              {bankInstructions.alias && (
+                <p>
+                  <strong>Alias / CBU:</strong>{' '}
+                  <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace', fontWeight: 600 }}>
+                    {bankInstructions.alias}
+                  </span>
+                </p>
+              )}
               {bankInstructions.additionalNotes && (
                 <p style={{ color: 'var(--color-text-subtle)', marginTop: 'var(--spacing-1)' }}>
-                  💡 {bankInstructions.additionalNotes}
+                  {bankInstructions.additionalNotes}
                 </p>
               )}
             </div>

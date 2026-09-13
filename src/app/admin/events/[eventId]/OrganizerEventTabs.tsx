@@ -83,12 +83,12 @@ export const OrganizerEventTabs: React.FC<Props> = ({
   };
 
   // Métricas calculadas para el dashboard
-  const activeStages = useMemo(() => stages.filter((s) => s.visibility === 'public'), [stages]);
+  const activeStages = useMemo(() => stages.filter((s) => s.visibility === 'visible' || s.visibility === 'public'), [stages]);
   const totalResponses = useMemo(() => stages.reduce((acc, s) => acc + (s.responseCount || 0), 0), [stages]);
   const totalViews = useMemo(() => stages.reduce((acc, s) => acc + (s.readCount || 0), 0), [stages]);
 
   const openTickets = useMemo(
-    () => initialTickets.filter((t) => t.status !== 'resolved' && t.status !== 'closed'),
+    () => initialTickets.filter((t) => t.status !== 'resolved'),
     [initialTickets]
   );
 
@@ -146,7 +146,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* Menú de Navegación Horizontal Táctil (Mobile-First Tab Bar) */}
+      {/* Menú de Navegación Mobile-First (Rondia Accessible Tab Bar) */}
       <nav
         aria-label="Secciones del evento"
         style={{
@@ -161,98 +161,109 @@ export const OrganizerEventTabs: React.FC<Props> = ({
         }}
       >
         <div
+          role="tablist"
           style={{
             display: 'flex',
             gap: 'var(--spacing-2)',
-            overflowX: 'auto',
-            whiteSpace: 'nowrap',
-            paddingBottom: '4px',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
+            flexWrap: 'wrap',
+            paddingBottom: '2px',
           }}
         >
           {/* Pestaña 1: Resumen */}
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'resumen'}
             onClick={() => changeTab('resumen')}
             style={{
-              padding: '0.5rem 0.85rem',
+              minHeight: 'var(--touch-target-min)',
+              padding: '0.5rem 0.9rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'resumen' ? 700 : 600,
               backgroundColor: activeTab === 'resumen' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'resumen' ? '#ffffff' : 'var(--color-text-main)',
+              color: activeTab === 'resumen' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
               border: activeTab === 'resumen' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              flexShrink: 0,
               boxShadow: activeTab === 'resumen' ? 'var(--shadow-sm)' : 'none',
-              transition: 'all 0.15s ease-in-out',
+              transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
-            <span>📊</span>
             <span>Resumen</span>
           </button>
 
-          {/* Pestaña 2: Etapas */}
+          {/* Pestaña 2: Consultas */}
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'etapas'}
             onClick={() => changeTab('etapas')}
             style={{
-              padding: '0.5rem 0.85rem',
+              minHeight: 'var(--touch-target-min)',
+              padding: '0.5rem 0.9rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'etapas' ? 700 : 600,
               backgroundColor: activeTab === 'etapas' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'etapas' ? '#ffffff' : 'var(--color-text-main)',
+              color: activeTab === 'etapas' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
               border: activeTab === 'etapas' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              flexShrink: 0,
               boxShadow: activeTab === 'etapas' ? 'var(--shadow-sm)' : 'none',
-              transition: 'all 0.15s ease-in-out',
+              transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
-            <span>📝</span>
-            <span>Etapas ({stages.length})</span>
+            <span>Consultas</span>
+            <span
+              style={{
+                fontVariantNumeric: 'tabular-nums',
+                fontSize: 'var(--font-size-xs)',
+                opacity: 0.85,
+              }}
+            >
+              ({stages.length})
+            </span>
           </button>
 
-          {/* Pestaña 3: Cuota y Pagos */}
+          {/* Pestaña 3: Pagos */}
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'pagos'}
             onClick={() => changeTab('pagos')}
             style={{
-              padding: '0.5rem 0.85rem',
+              minHeight: 'var(--touch-target-min)',
+              padding: '0.5rem 0.9rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'pagos' ? 700 : 600,
               backgroundColor: activeTab === 'pagos' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'pagos' ? '#ffffff' : 'var(--color-text-main)',
+              color: activeTab === 'pagos' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
               border: activeTab === 'pagos' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              flexShrink: 0,
               boxShadow: activeTab === 'pagos' ? 'var(--shadow-sm)' : 'none',
-              transition: 'all 0.15s ease-in-out',
+              transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
-            <span>💳</span>
-            <span>Cuota y Pagos</span>
+            <span>Pagos</span>
             {initialSummary.reportedPendingCount > 0 && (
               <span
                 style={{
-                  backgroundColor: activeTab === 'pagos' ? '#ffffff' : 'var(--color-danger-bg, #fee2e2)',
-                  color: activeTab === 'pagos' ? 'var(--color-primary)' : 'var(--color-danger-text, #991b1b)',
-                  fontSize: '0.7rem',
-                  fontWeight: 800,
-                  borderRadius: '999px',
+                  backgroundColor: activeTab === 'pagos' ? '#ffffff' : 'var(--color-info-bg)',
+                  color: activeTab === 'pagos' ? 'var(--color-primary)' : 'var(--color-info-text)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  borderRadius: 'var(--radius-full)',
                   padding: '0.1rem 0.45rem',
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
                 {initialSummary.reportedPendingCount}
@@ -260,63 +271,75 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             )}
           </button>
 
-          {/* Pestaña 4: Familias y Enlaces */}
+          {/* Pestaña 4: Familias */}
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'familias'}
             onClick={() => changeTab('familias')}
             style={{
-              padding: '0.5rem 0.85rem',
+              minHeight: 'var(--touch-target-min)',
+              padding: '0.5rem 0.9rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'familias' ? 700 : 600,
               backgroundColor: activeTab === 'familias' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'familias' ? '#ffffff' : 'var(--color-text-main)',
+              color: activeTab === 'familias' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
               border: activeTab === 'familias' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              flexShrink: 0,
               boxShadow: activeTab === 'familias' ? 'var(--shadow-sm)' : 'none',
-              transition: 'all 0.15s ease-in-out',
+              transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
-            <span>👥</span>
-            <span>Familias ({participants.length})</span>
+            <span>Familias</span>
+            <span
+              style={{
+                fontVariantNumeric: 'tabular-nums',
+                fontSize: 'var(--font-size-xs)',
+                opacity: 0.85,
+              }}
+            >
+              ({participants.length})
+            </span>
           </button>
 
-          {/* Pestaña 5: Mesa de Ayuda */}
+          {/* Pestaña 5: Ayuda */}
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'soporte'}
             onClick={() => changeTab('soporte')}
             style={{
-              padding: '0.5rem 0.85rem',
+              minHeight: 'var(--touch-target-min)',
+              padding: '0.5rem 0.9rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'soporte' ? 700 : 600,
               backgroundColor: activeTab === 'soporte' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'soporte' ? '#ffffff' : 'var(--color-text-main)',
+              color: activeTab === 'soporte' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
               border: activeTab === 'soporte' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              flexShrink: 0,
               boxShadow: activeTab === 'soporte' ? 'var(--shadow-sm)' : 'none',
-              transition: 'all 0.15s ease-in-out',
+              transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
-            <span>💬</span>
-            <span>Mesa de Ayuda</span>
+            <span>Ayuda</span>
             {openTickets.length > 0 && (
               <span
                 style={{
-                  backgroundColor: activeTab === 'soporte' ? '#ffffff' : 'var(--color-warning-bg, #fef3c7)',
-                  color: activeTab === 'soporte' ? 'var(--color-primary)' : 'var(--color-warning-text, #92400e)',
-                  fontSize: '0.7rem',
-                  fontWeight: 800,
-                  borderRadius: '999px',
+                  backgroundColor: activeTab === 'soporte' ? '#ffffff' : 'var(--color-warning-bg)',
+                  color: activeTab === 'soporte' ? 'var(--color-primary)' : 'var(--color-warning-text)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  borderRadius: 'var(--radius-full)',
                   padding: '0.1rem 0.45rem',
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
                 {openTickets.length}
@@ -324,29 +347,30 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             )}
           </button>
 
-          {/* Pestaña 6: Ajustes y Equipo */}
+          {/* Pestaña 6: Ajustes */}
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'ajustes'}
             onClick={() => changeTab('ajustes')}
             style={{
-              padding: '0.5rem 0.85rem',
+              minHeight: 'var(--touch-target-min)',
+              padding: '0.5rem 0.9rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'ajustes' ? 700 : 600,
               backgroundColor: activeTab === 'ajustes' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'ajustes' ? '#ffffff' : 'var(--color-text-main)',
+              color: activeTab === 'ajustes' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
               border: activeTab === 'ajustes' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              flexShrink: 0,
               boxShadow: activeTab === 'ajustes' ? 'var(--shadow-sm)' : 'none',
-              transition: 'all 0.15s ease-in-out',
+              transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
-            <span>⚙️</span>
-            <span>Ajustes y Equipo</span>
+            <span>Ajustes</span>
           </button>
         </div>
       </nav>
@@ -361,7 +385,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             <div
               style={{
                 backgroundColor: 'var(--color-surface)',
-                border: '1.5px solid var(--color-primary)',
+                border: '1.5px solid var(--color-info)',
                 borderRadius: 'var(--radius-md)',
                 padding: 'var(--spacing-3)',
                 display: 'flex',
@@ -369,12 +393,11 @@ export const OrganizerEventTabs: React.FC<Props> = ({
                 justifyContent: 'space-between',
                 gap: 'var(--spacing-3)',
                 flexWrap: 'wrap',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
               }}
             >
               <div>
-                <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
-                  🔔 PAGOS PENDIENTES DE REVISIÓN
+                <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-info)' }}>
+                  Pagos pendientes de verificación
                 </span>
                 <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
                   Hay {initialSummary.reportedPendingCount} familia(s) que informó transferencia por un total de{' '}
@@ -384,9 +407,9 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               <Button
                 variant="primary"
                 onClick={() => changeTab('pagos')}
-                style={{ minHeight: '36px', padding: '0.35rem 0.85rem', fontSize: 'var(--font-size-xs)' }}
+                style={{ minHeight: 'var(--touch-target-min)', padding: '0.4rem 0.9rem', fontSize: 'var(--font-size-xs)' }}
               >
-                ✓ Ir a verificar pagos
+                Ir a verificar pagos
               </Button>
             </div>
           )}
@@ -395,7 +418,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             <div
               style={{
                 backgroundColor: 'var(--color-surface)',
-                border: '1px solid var(--color-warning-border, #fcd34d)',
+                border: '1px solid var(--color-warning-border)',
                 borderRadius: 'var(--radius-md)',
                 padding: 'var(--spacing-3)',
                 display: 'flex',
@@ -406,8 +429,8 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               }}
             >
               <div>
-                <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-warning-text, #92400e)' }}>
-                  💬 CONSULTAS DE FAMILIAS
+                <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-warning-text)' }}>
+                  Consultas de familias
                 </span>
                 <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
                   Hay {openTickets.length} consulta(s) abierta(s) en la mesa de ayuda esperando respuesta.
@@ -416,7 +439,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               <Button
                 variant="secondary"
                 onClick={() => changeTab('soporte')}
-                style={{ minHeight: '36px', padding: '0.35rem 0.85rem', fontSize: 'var(--font-size-xs)' }}
+                style={{ minHeight: 'var(--touch-target-min)', padding: '0.4rem 0.9rem', fontSize: 'var(--font-size-xs)' }}
               >
                 Ver consultas
               </Button>
@@ -447,9 +470,9 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               }}
             >
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontWeight: 600 }}>
-                👥 Familias
+                Familias
               </span>
-              <span style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)' }}>
+              <span style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>
                 {participants.length}
               </span>
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
@@ -457,7 +480,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               </span>
             </div>
 
-            {/* Card 2: Etapas Activas */}
+            {/* Card 2: Consultas Activas */}
             <div
               onClick={() => changeTab('etapas')}
               style={{
@@ -473,16 +496,16 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               }}
             >
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontWeight: 600 }}>
-                📝 Etapas Activas
+                Consultas activas
               </span>
-              <span style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)' }}>
+              <span style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>
                 {activeStages.length}{' '}
                 <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--color-text-subtle)' }}>
                   / {stages.length}
                 </span>
               </span>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                {totalResponses} votos y respuestas
+              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
+                {totalResponses} respuestas recibidas
               </span>
             </div>
 
@@ -502,12 +525,12 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               }}
             >
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontWeight: 600 }}>
-                💳 Recaudación
+                Recaudación
               </span>
-              <span style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--color-success-text)' }}>
-                {initialSummary.currency} ${(initialSummary.verifiedTotalAmountMinor / 100).toLocaleString('es-UY')}
+              <span style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--color-success-text)', fontVariantNumeric: 'tabular-nums' }}>
+                ${(initialSummary.verifiedTotalAmountMinor / 100).toLocaleString('es-UY')} {initialSummary.currency}
               </span>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
                 {initialSummary.verifiedCount} de {participants.length} verificadas ({percentCollected}%)
               </span>
             </div>
@@ -528,19 +551,19 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               }}
             >
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontWeight: 600 }}>
-                👀 Lecturas
+                Lecturas
               </span>
-              <span style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-text-main)' }}>
+              <span style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-text-main)', fontVariantNumeric: 'tabular-nums' }}>
                 {totalViews}
               </span>
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                Aperturas de etapas
+                Aperturas de consultas
               </span>
             </div>
           </div>
 
-          {/* Accesos Rápidos de 1 toque */}
-          <Card title="⚡ Accesos Rápidos para el Organizador">
+          {/* Accesos Rápidos */}
+          <Card title="Accesos rápidos para el organizador">
             <div
               style={{
                 display: 'grid',
@@ -552,67 +575,67 @@ export const OrganizerEventTabs: React.FC<Props> = ({
                 variant="outline"
                 onClick={() => changeTab('etapas')}
                 style={{
-                  minHeight: '44px',
+                  minHeight: 'var(--touch-target-min)',
                   justifyContent: 'flex-start',
                   fontSize: 'var(--font-size-sm)',
                   textAlign: 'left',
                   padding: '0.5rem 0.75rem',
                 }}
               >
-                📝 Crear o editar etapas
+                Crear o editar consultas
               </Button>
               <Button
                 variant="outline"
                 onClick={() => changeTab('pagos')}
                 style={{
-                  minHeight: '44px',
+                  minHeight: 'var(--touch-target-min)',
                   justifyContent: 'flex-start',
                   fontSize: 'var(--font-size-sm)',
                   textAlign: 'left',
                   padding: '0.5rem 0.75rem',
                 }}
               >
-                💳 Verificar aportes y cuota
+                Verificar aportes y cuota
               </Button>
               <Button
                 variant="outline"
                 onClick={() => changeTab('familias')}
                 style={{
-                  minHeight: '44px',
+                  minHeight: 'var(--touch-target-min)',
                   justifyContent: 'flex-start',
                   fontSize: 'var(--font-size-sm)',
                   textAlign: 'left',
                   padding: '0.5rem 0.75rem',
                 }}
               >
-                👥 Enviar enlaces por WhatsApp
+                Enviar enlaces por WhatsApp
               </Button>
               <Button
                 variant="outline"
                 onClick={() => changeTab('familias')}
                 style={{
-                  minHeight: '44px',
+                  minHeight: 'var(--touch-target-min)',
                   justifyContent: 'flex-start',
                   fontSize: 'var(--font-size-sm)',
                   textAlign: 'left',
                   padding: '0.5rem 0.75rem',
                 }}
               >
-                📥 Cargar participantes (Excel/CSV)
+                Cargar participantes (Excel/CSV)
               </Button>
             </div>
           </Card>
 
           {/* Estado de Etapas Abiertas y Publicadas */}
-          <Card title={`Etapas Activas de Cara a las Familias (${activeStages.length})`}>
+          <Card title={`Consultas activas de cara a las familias (${activeStages.length})`}>
             {activeStages.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 'var(--spacing-4)', color: 'var(--color-text-subtle)' }}>
                 <p style={{ margin: 0, fontSize: 'var(--font-size-sm)' }}>
-                  Aún no hay etapas publicadas para las familias en este evento.
+                  Aún no hay consultas publicadas para las familias en este evento.
                 </p>
                 <div style={{ marginTop: 'var(--spacing-2)' }}>
                   <Button variant="primary" onClick={() => changeTab('etapas')}>
-                    Publicar o crear una etapa
+                    Publicar o crear una consulta
                   </Button>
                 </div>
               </div>
@@ -633,7 +656,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
                       <div>
                         <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
-                          Orden #{st.order} • {st.type === 'vote' ? '🗳️ Votación' : st.type === 'date_survey' ? '📅 Encuesta de Fechas' : '📝 Consulta'}
+                          Orden #{st.order} • {st.type === 'vote' ? 'Votación' : st.type === 'date_survey' ? 'Encuesta de fechas' : 'Consulta'}
                         </span>
                         <h4 style={{ margin: '0.2rem 0', fontSize: 'var(--font-size-base)', fontWeight: 700 }}>
                           {st.title}
@@ -654,16 +677,16 @@ export const OrganizerEventTabs: React.FC<Props> = ({
                     )}
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)', paddingTop: 'var(--spacing-1)', borderTop: '1px solid var(--color-border)' }}>
-                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                        🗳️ <strong>{st.responseCount || 0}</strong> respuestas recibidas • 👀 <strong>{st.readCount || 0}</strong> lecturas
+                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
+                        <strong>{st.responseCount || 0}</strong> respuestas recibidas • <strong>{st.readCount || 0}</strong> lecturas
                       </span>
 
                       <Button
                         variant="secondary"
                         onClick={() => changeTab('etapas')}
-                        style={{ minHeight: '30px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                        style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                       >
-                        Gestionar etapa →
+                        Gestionar consulta →
                       </Button>
                     </div>
                   </div>
@@ -678,7 +701,9 @@ export const OrganizerEventTabs: React.FC<Props> = ({
       {activeTab === 'etapas' && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>Consultas y Etapas del Evento</h3>
+            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-primary)' }}>
+              Consultas del evento
+            </h3>
           </div>
           <StageAdminControls eventId={eventId} initialStages={stages} />
         </section>

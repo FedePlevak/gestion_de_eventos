@@ -108,23 +108,24 @@ export const PaymentClientForm: React.FC<Props> = ({
 
   return (
     <Card
-      title="Informe de Pago"
-      subtitle="Completá los datos luego de realizar la transferencia"
+      title="Informe de pago"
+      subtitle="Completá los datos luego de realizar la transferencia bancaria"
       action={
         isVerified ? (
-          <Badge variant="success">Recepción Verificada</Badge>
+          <Badge variant="success">Pago recibido</Badge>
         ) : isReported ? (
-          <Badge variant="info">Por verificar</Badge>
+          <Badge variant="info">Pago informado · Pendiente de verificación</Badge>
         ) : requiresRevision ? (
-          <Badge variant="danger">Corrección solicitada</Badge>
+          <Badge variant="danger">Hay un dato para revisar</Badge>
         ) : (
-          <Badge variant="warning">Pendiente de pago</Badge>
+          <Badge variant="warning">Pendiente de informar</Badge>
         )
       }
     >
       {/* Mensajes de retroalimentación */}
       {successMessage && (
         <div
+          role="status"
           style={{
             backgroundColor: 'var(--color-success-bg)',
             border: '1px solid var(--color-success-border)',
@@ -135,12 +136,13 @@ export const PaymentClientForm: React.FC<Props> = ({
             marginBottom: 'var(--spacing-3)',
           }}
         >
-          ✓ {successMessage}
+          {successMessage}
         </div>
       )}
 
       {errorMessage && (
         <div
+          role="alert"
           style={{
             backgroundColor: 'var(--color-danger-bg)',
             border: '1px solid var(--color-danger-border)',
@@ -151,13 +153,14 @@ export const PaymentClientForm: React.FC<Props> = ({
             marginBottom: 'var(--spacing-3)',
           }}
         >
-          ⚠️ {errorMessage}
+          {errorMessage}
         </div>
       )}
 
       {/* Alerta de corrección solicitada por el comité */}
       {requiresRevision && payment.revisionReason && (
         <div
+          role="alert"
           style={{
             backgroundColor: 'var(--color-danger-bg)',
             border: '1px solid var(--color-danger-border)',
@@ -170,7 +173,7 @@ export const PaymentClientForm: React.FC<Props> = ({
           }}
         >
           <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-danger-text)' }}>
-            ⚠️ EL COMITÉ SOLICITÓ REVISAR ESTE PAGO:
+            El comité solicitó revisar este pago:
           </span>
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-danger-text)' }}>
             {payment.revisionReason}
@@ -193,13 +196,13 @@ export const PaymentClientForm: React.FC<Props> = ({
           }}
         >
           <p style={{ fontWeight: 700, color: 'var(--color-success-text)', fontSize: 'var(--font-size-lg)' }}>
-            ✓ Recepción Verificada
+            Pago recibido
           </p>
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-success-text)' }}>
-            El comité confirmó la acreditación de ${(payment.verifiedAmountMinor! / 100).toLocaleString('es-UY')} {payment.currency} para tu familia.
+            El comité confirmó la acreditación de <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${(payment.verifiedAmountMinor! / 100).toLocaleString('es-UY')} {payment.currency}</strong> para tu familia.
           </p>
           {payment.verifiedAt && (
-            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
               Verificado el {new Date(payment.verifiedAt).toLocaleDateString('es-UY')}
             </span>
           )}
@@ -226,7 +229,7 @@ export const PaymentClientForm: React.FC<Props> = ({
           />
 
           <Input
-            label="Referencia o Nro de comprobante (opcional)"
+            label="Referencia o número de comprobante (opcional)"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             placeholder="Ej: Transf. BROU 984729"
@@ -235,7 +238,7 @@ export const PaymentClientForm: React.FC<Props> = ({
           {/* Adjuntar comprobante */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
             <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
-              Comprobante bancario (opcional, máx 3 MB)
+              Comprobante bancario (opcional, máx. 3 MB)
             </label>
             <input
               type="file"
@@ -244,8 +247,9 @@ export const PaymentClientForm: React.FC<Props> = ({
               style={{
                 fontSize: 'var(--font-size-sm)',
                 padding: 'var(--spacing-2)',
-                border: '1px solid var(--color-border)',
+                border: '1px solid var(--color-control-border)',
                 borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--color-surface)',
               }}
             />
             <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
@@ -266,7 +270,7 @@ export const PaymentClientForm: React.FC<Props> = ({
                 fontSize: 'var(--font-size-xs)',
               }}
             >
-              <span>📄 Comprobante actual: <strong>{payment.attachment.fileName}</strong></span>
+              <span>Comprobante actual: <strong>{payment.attachment.fileName}</strong></span>
               <a
                 href={`/api/payments/receipts/${payment.attachment.id}?eventId=${eventId}&participantId=${payment.participantId}&path=${encodeURIComponent(payment.attachment.storagePath)}`}
                 target="_blank"

@@ -114,6 +114,16 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 5,
     });
 
+    // En desarrollo local, también configurar dev_organizer_email
+    if (process.env.APP_ENV !== 'production') {
+      response.cookies.set('dev_organizer_email', verifyData.email, {
+        httpOnly: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 5,
+      });
+    }
+
     return response;
   } catch (error: any) {
     console.error('Error en /api/admin/auth/login:', error);

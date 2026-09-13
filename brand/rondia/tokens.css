@@ -1,0 +1,72 @@
+/* Rondia v1 · Propuesta sin importar en la aplicación. */
+:root {
+  --color-primary: #173F35;
+  --color-primary-hover: #0E2C25;
+  --color-primary-light: #E8EFE2;
+  --color-primary-text: #FFFFFF;
+  --color-brand-coral: #F37556;
+  --color-brand-sprout: #D8EBA3;
+  --color-surface: #FFFFFF;
+  --color-background: #F6F3EA;
+  --color-surface-subtle: #EFEEE6;
+  --color-border: #C9D0C5;
+  --color-border-hover: #75877E;
+  --color-control-border: #75877E;
+  --color-text-main: #203B34;
+  --color-text-muted: #52645D;
+  --color-text-subtle: #52645D;
+  --color-success: #246347;
+  --color-success-bg: #EAF4EC;
+  --color-success-surface: #EAF4EC;
+  --color-success-border: #9EBFA7;
+  --color-success-text: #24543A;
+  --color-warning-bg: #FFF2D9;
+  --color-warning-surface: #FFF2D9;
+  --color-warning-border: #D0AA63;
+  --color-warning-text: #795014;
+  --color-danger-bg: #FBEAE6;
+  --color-danger-border: #DCAAA0;
+  --color-danger-text: #9A3829;
+  --color-error-surface: #FBEAE6;
+  --color-error-text: #9A3829;
+  --color-info-bg: #EAF0FA;
+  --color-info-surface: #EAF0FA;
+  --color-info-border: #A7BBD8;
+  --color-info-text: #30557C;
+  --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  --font-editorial: Georgia, "Times New Roman", serif;
+  --font-size-xs: .875rem;
+  --font-size-sm: .875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.75rem;
+  --font-size-3xl: 2.25rem;
+  --line-height-tight: 1.15;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --spacing-1: .25rem;
+  --spacing-2: .5rem;
+  --spacing-3: .75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --radius-sm: .5rem;
+  --radius-md: .75rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 5px rgb(23 63 53 / .04);
+  --shadow-md: 0 8px 24px rgb(23 63 53 / .06);
+  --shadow-lg: 0 20px 50px rgb(23 63 53 / .1);
+  --touch-target-min: 48px;
+  --focus-ring: 3px solid #173F35;
+  --focus-ring-on-dark: 3px solid #D8EBA3;
+  --focus-ring-offset: 3px;
+  --transition-speed: 150ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --transition-speed: 0ms; }
+}

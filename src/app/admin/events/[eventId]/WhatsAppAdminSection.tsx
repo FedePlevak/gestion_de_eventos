@@ -87,14 +87,16 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
         <div>
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>Asistente de Mensajes para WhatsApp</h3>
+          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-primary)' }}>
+            Asistente de mensajes para WhatsApp
+          </h3>
           <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
             Textos personalizados listos para copiar o abrir en WhatsApp con el enlace de cada familia.
           </p>
         </div>
       </div>
 
-      {/* Aviso de seguridad y regla S03 */}
+      {/* Aviso de control manual */}
       <div
         style={{
           backgroundColor: 'var(--color-surface-subtle)',
@@ -106,33 +108,32 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
           lineHeight: 'var(--line-height-normal)',
         }}
       >
-        💡 <strong>Control manual del comité:</strong> Esta herramienta prepara los textos para que los envíes directamente desde tu aplicación de WhatsApp. No realiza envíos automáticos ni altera el estado de las familias al preparar o copiar mensajes.
+        <strong>Control manual del comité:</strong> Esta herramienta prepara los textos para que los envíes directamente desde tu aplicación de WhatsApp. No realiza envíos automáticos ni altera el estado de las familias al preparar o copiar mensajes.
       </div>
 
-      {/* Selector de plantilla */}
       {/* Selector de plantilla y filtro de clase */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-        <div style={{ display: 'flex', gap: 'var(--spacing-2)', overflowX: 'auto', paddingBottom: 'var(--spacing-1)' }}>
+        <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap', paddingBottom: 'var(--spacing-1)' }}>
           <Button
             variant={selectedTemplate === 'INVITATION' ? 'primary' : 'secondary'}
             onClick={() => setSelectedTemplate('INVITATION')}
-            style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
+            style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
           >
-            Invitación y Acceso
+            Invitación y enlace personal
           </Button>
           <Button
             variant={selectedTemplate === 'STAGE_REMINDER' ? 'primary' : 'secondary'}
             onClick={() => setSelectedTemplate('STAGE_REMINDER')}
-            style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
+            style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
           >
-            Recordatorio de Menú
+            Consulta abierta
           </Button>
           <Button
             variant={selectedTemplate === 'PAYMENT_REMINDER' ? 'primary' : 'secondary'}
             onClick={() => setSelectedTemplate('PAYMENT_REMINDER')}
-            style={{ minHeight: '34px', padding: '0.3rem 0.7rem', fontSize: 'var(--font-size-xs)' }}
+            style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
           >
-            Recordatorio de Cuota ($3.000)
+            Aporte o cuota
           </Button>
         </div>
 
@@ -377,17 +378,17 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
                   <Button
                     variant="outline"
                     onClick={() => handleCopyLink(accessUrl, p.id)}
-                    style={{ minHeight: '30px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                    style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                   >
-                    {isLinkCopied ? '✓ ¡Enlace copiado!' : '🔗 Copiar solo link'}
+                    {isLinkCopied ? 'Enlace copiado' : 'Copiar solo enlace'}
                   </Button>
 
                   <Button
                     variant="secondary"
                     onClick={() => handleCopy(msg.text, p.id)}
-                    style={{ minHeight: '30px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+                    style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                   >
-                    {isCopied ? '✓ ¡Texto copiado!' : '📋 Copiar texto'}
+                    {isCopied ? 'Texto copiado' : 'Copiar texto'}
                   </Button>
 
                   <a
@@ -397,8 +398,9 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '0.3rem',
-                      padding: '0.2rem 0.6rem',
+                      justifyContent: 'center',
+                      minHeight: 'var(--touch-target-min)',
+                      padding: '0.35rem 0.85rem',
                       backgroundColor: '#25D366',
                       color: '#ffffff',
                       borderRadius: 'var(--radius-md)',
@@ -407,7 +409,7 @@ export const WhatsAppAdminSection: React.FC<Props> = ({ eventName, participants 
                       textDecoration: 'none',
                     }}
                   >
-                    💬 Abrir en WhatsApp ↗
+                    Abrir en WhatsApp ↗
                   </a>
                 </div>
               </div>

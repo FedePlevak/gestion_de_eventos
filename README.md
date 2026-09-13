@@ -17,6 +17,11 @@ El producto debe admitir distintos grupos, eventos y comités. La experiencia de
 5. [Plan de desarrollo](docs/05-plan-de-desarrollo.md): entregas incrementales y dependencias.
 6. [Aceptación y pruebas](docs/06-aceptacion-y-pruebas.md): escenarios verificables y condiciones para habilitar el piloto.
 7. [Stack y puesta en marcha](docs/07-stack-y-puesta-en-marcha.md): tecnologías elegidas, servicios, costos y configuración inicial.
+8. [Brief de negocio y marca](docs/08-brief-de-negocio-y-marca.md): cliente inicial, propuesta de valor, nombre y oferta a validar.
+9. [Guía de identidad](docs/09-guia-de-identidad-rondia.md): sistema visual, voz y aplicación general.
+10. [Implementación de marca](docs/10-implementacion-marca-mobile-first.md): documento rector para aplicar Rondia con prioridad móvil.
+
+La especificación operativa de la marca continúa en [docs/marca](docs/marca/README.md).
 
 [AGENTS.md](AGENTS.md) contiene instrucciones para quienes implementen el proyecto.
 
@@ -24,7 +29,7 @@ El producto debe admitir distintos grupos, eventos y comités. La experiencia de
 
 Stack elegido: **TypeScript + Next.js (React), Cloud Firestore, Firebase Authentication, Cloud Storage for Firebase y despliegue en Netlify**. La decisión y sus límites están en el documento 07. No hace falta volver a elegir proveedores para empezar; las versiones exactas se fijan al inicializar el proyecto.
 
-La definición funcional permite comenzar el diseño y la implementación del MVP. Esta entrega contiene documentación; todavía no existe una aplicación implementada ni desplegada.
+Existe una implementación inicial de la aplicación, con pantallas, rutas, servicios y pruebas. La revisión de producto del 13 de septiembre de 2026 identificó diferencias respecto de la documentación y brechas que deben resolverse antes de habilitar el piloto. La existencia de código no acredita por sí sola el cumplimiento de todos los criterios de aceptación; no se verificó el estado de un despliegue durante esa revisión.
 
 Las decisiones del usuario y los supuestos de implementación están diferenciados en el documento de alcance. Los supuestos permiten avanzar, pero no deben presentarse como decisiones expresas del usuario.
 
@@ -35,3 +40,7 @@ Las decisiones del usuario y los supuestos de implementación están diferenciad
 Sus versiones de herramientas, promesas de costo cero, plazo de un día, procedimientos de copia y configuración de infraestructura no son compromisos vigentes ni instrucciones para ejecutar. El documento 07 reemplaza la elección de servicios del blueprint con una decisión verificada el 7 de septiembre de 2026; antes de contratar se reconfirman precios y condiciones.
 
 Ante una contradicción, prevalecen las instrucciones posteriores del usuario. Entre estos archivos, el alcance define el compromiso de producto; las reglas de negocio precisan su comportamiento y los demás documentos lo implementan.
+
+## Propuesta de negocio e identidad
+
+El [brief de negocio y marca](docs/08-brief-de-negocio-y-marca.md) y la [guía de identidad](docs/09-guia-de-identidad-rondia.md) presentan el cliente inicial recomendado y la identidad visual. Rondia quedó seleccionada para implementarse en la plataforma; la validación registral y de dominio continúa pendiente. El [kit de marca](brand/rondia/README.md) incluye recursos y vistas de referencia. La identidad todavía no está aplicada a las pantallas operativas; su implementación se define en [docs/10](docs/10-implementacion-marca-mobile-first.md) y [docs/marca](docs/marca/README.md).

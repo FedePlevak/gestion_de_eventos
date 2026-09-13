@@ -24,7 +24,7 @@ export const StageClientInteraction: React.FC<Props> = ({
   const [response, setResponse] = useState<StageResponse | null>(initialResponse);
   const [read, setRead] = useState<ReadConfirmation | null>(initialRead);
 
-  // Form state
+  // Estados de los campos
   const [selectedChoice, setSelectedChoice] = useState<string>(
     initialResponse?.answers?.choice || ''
   );
@@ -34,13 +34,14 @@ export const StageClientInteraction: React.FC<Props> = ({
   const [openText, setOpenText] = useState<string>(
     initialResponse?.answers?.text || ''
   );
-  const [quantity, setQuantity] = useState<number>(
-    initialResponse?.answers?.quantity ?? 0
+  const [quantity, setQuantity] = useState<number | ''>(
+    initialResponse?.answers?.quantity !== undefined ? initialResponse.answers.quantity : ''
   );
 
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [conflictVersion, setConflictVersion] = useState<number | null>(null);
 
   // Confirmar lectura informativa
   const handleConfirmRead = async () => {
@@ -61,27 +62,30 @@ export const StageClientInteraction: React.FC<Props> = ({
       }
 
       setRead(data.confirmation);
-      setSuccessMessage('¡Lectura confirmada! Gracias por informarte.');
+      setSuccessMessage('Lectura confirmada. Gracias por informarte.');
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error al confirmar lectura.');
+      setErrorMessage(err.message || 'No pudimos confirmar la lectura. Por favor intentá de nuevo.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Enviar respuesta
+  // Enviar o actualizar respuesta
   const handleSubmitResponse = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isClosed) return;
+
     setLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
+    setConflictVersion(null);
 
     let answers: Record<string, any> = {};
 
     switch (stage.type) {
       case 'single_choice':
         if (!selectedChoice) {
-          setErrorMessage('Por favor seleccioná una opción.');
+          setErrorMessage('Por favor seleccioná una opción antes de guardar.');
           setLoading(false);
           return;
         }
@@ -90,7 +94,7 @@ export const StageClientInteraction: React.FC<Props> = ({
 
       case 'multiple_choice':
         if (selectedChoices.length === 0) {
-          setErrorMessage('Por favor seleccioná al menos una opción.');
+          setErrorMessage('Por favor seleccioná al menos una opción antes de guardar.');
           setLoading(false);
           return;
         }
@@ -108,7 +112,7 @@ export const StageClientInteraction: React.FC<Props> = ({
 
       case 'open_text':
         if (!openText.trim()) {
-          setErrorMessage('Por favor ingresá tu respuesta.');
+          setErrorMessage('Por favor ingresá tu respuesta antes de guardar.');
           setLoading(false);
           return;
         }
@@ -116,6 +120,11 @@ export const StageClientInteraction: React.FC<Props> = ({
         break;
 
       case 'integer_quantity':
+        if (quantity === '' || isNaN(Number(quantity))) {
+          setErrorMessage('Por favor indicá una cantidad válida.');
+          setLoading(false);
+          return;
+        }
         answers = { quantity: Number(quantity) };
         break;
 
@@ -136,17 +145,22 @@ export const StageClientInteraction: React.FC<Props> = ({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'No se pudo guardar la respuesta.');
+        // Conflicto de versión
+        if (res.status === 409) {
+          setConflictVersion(data.currentVersion || 2);
+          throw new Error(
+            'Otra persona de tu familia guardó cambios recientemente. Podés recargar para ver la versión guardada.'
+          );
+        }
+        throw new Error(data.error || 'No pudimos guardar la respuesta.');
       }
 
       setResponse(data.response);
-      setSuccessMessage(
-        response
-          ? 'Tu respuesta fue actualizada con éxito.'
-          : '¡Respuesta guardada con éxito!'
-      );
+      setSuccessMessage('Respuesta guardada con éxito.');
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error al enviar la respuesta.');
+      setErrorMessage(
+        err.message || 'No pudimos guardar. Lo que escribiste sigue acá; intentá de nuevo.'
+      );
     } finally {
       setLoading(false);
     }
@@ -157,6 +171,7 @@ export const StageClientInteraction: React.FC<Props> = ({
       {/* Mensajes de éxito o error */}
       {successMessage && (
         <div
+          role="status"
           style={{
             backgroundColor: 'var(--color-success-bg)',
             border: '1px solid var(--color-success-border)',
@@ -164,15 +179,17 @@ export const StageClientInteraction: React.FC<Props> = ({
             padding: 'var(--spacing-3)',
             borderRadius: 'var(--radius-md)',
             fontSize: 'var(--font-size-sm)',
+            lineHeight: 'var(--line-height-normal)',
             marginBottom: 'var(--spacing-3)',
           }}
         >
-          ✓ {successMessage}
+          {successMessage}
         </div>
       )}
 
       {errorMessage && (
         <div
+          role="alert"
           style={{
             backgroundColor: 'var(--color-danger-bg)',
             border: '1px solid var(--color-danger-border)',
@@ -180,10 +197,22 @@ export const StageClientInteraction: React.FC<Props> = ({
             padding: 'var(--spacing-3)',
             borderRadius: 'var(--radius-md)',
             fontSize: 'var(--font-size-sm)',
+            lineHeight: 'var(--line-height-normal)',
             marginBottom: 'var(--spacing-3)',
           }}
         >
-          ⚠️ {errorMessage}
+          {errorMessage}
+          {conflictVersion && (
+            <div style={{ marginTop: 'var(--spacing-2)' }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => window.location.reload()}
+              >
+                Cargar versión más reciente
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -194,7 +223,7 @@ export const StageClientInteraction: React.FC<Props> = ({
             <div
               style={{
                 fontSize: 'var(--font-size-base)',
-                lineHeight: 'var(--line-height-normal)',
+                lineHeight: 'var(--line-height-relaxed)',
                 color: 'var(--color-text-main)',
                 whiteSpace: 'pre-wrap',
               }}
@@ -207,11 +236,13 @@ export const StageClientInteraction: React.FC<Props> = ({
             <div
               style={{
                 backgroundColor: 'var(--color-surface-subtle)',
+                border: '1px solid var(--color-border)',
                 padding: 'var(--spacing-3)',
                 borderRadius: 'var(--radius-md)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 'var(--spacing-2)',
+                flexWrap: 'wrap',
               }}
             >
               <Badge variant="success">Lectura confirmada</Badge>
@@ -222,16 +253,22 @@ export const StageClientInteraction: React.FC<Props> = ({
                   year: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
-                })}
+                })}{' '}
+                h
               </span>
             </div>
           ) : isClosed ? (
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-subtle)' }}>
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-subtle)', margin: 0 }}>
               Esta etapa informativa está cerrada.
             </p>
           ) : (
-            <Button onClick={handleConfirmRead} isLoading={loading} fullWidth>
-              Confirmar que leí esta información
+            <Button
+              onClick={handleConfirmRead}
+              isLoading={loading}
+              fullWidth
+              variant="primary"
+            >
+              {loading ? 'Guardando confirmación…' : 'Confirmar que leí'}
             </Button>
           )}
         </div>
@@ -240,12 +277,12 @@ export const StageClientInteraction: React.FC<Props> = ({
       {/* ESTADO 2: Consulta con Respuestas (Opciones / Selección / Texto) */}
       {stage.type !== 'info' && (
         <form onSubmit={handleSubmitResponse} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-          {/* Opción única (ej. Menú) */}
+          {/* Opción única (radio buttons grandes) */}
           {stage.type === 'single_choice' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-              <p style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-main)' }}>
+            <fieldset style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+              <legend style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-main)', marginBottom: 'var(--spacing-1)' }}>
                 Elegí una opción:
-              </p>
+              </legend>
               {(stage.options || []).map((opt) => {
                 const isSelected = selectedChoice === opt.id;
                 return (
@@ -253,16 +290,18 @@ export const StageClientInteraction: React.FC<Props> = ({
                     key={opt.id}
                     style={{
                       display: 'flex',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
+                      minHeight: 'var(--touch-target-min)',
                       gap: 'var(--spacing-3)',
-                      padding: 'var(--spacing-3)',
+                      padding: '0.75rem var(--spacing-3)',
                       borderRadius: 'var(--radius-md)',
                       border: `2px solid ${
-                        isSelected ? 'var(--color-primary)' : 'var(--color-border)'
+                        isSelected ? 'var(--color-primary)' : 'var(--color-control-border)'
                       }`,
                       backgroundColor: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
                       cursor: isClosed ? 'not-allowed' : 'pointer',
-                      opacity: isClosed && !isSelected ? 0.5 : 1,
+                      opacity: isClosed && !isSelected ? 0.6 : 1,
+                      boxSizing: 'border-box',
                     }}
                   >
                     <input
@@ -273,18 +312,19 @@ export const StageClientInteraction: React.FC<Props> = ({
                       disabled={isClosed}
                       onChange={() => setSelectedChoice(opt.id)}
                       style={{
-                        marginTop: '0.2rem',
-                        width: '18px',
-                        height: '18px',
+                        width: '20px',
+                        height: '20px',
                         accentColor: 'var(--color-primary)',
+                        cursor: isClosed ? 'not-allowed' : 'pointer',
+                        flexShrink: 0,
                       }}
                     />
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontWeight: isSelected ? 700 : 500, color: 'var(--color-text-main)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <span style={{ fontWeight: isSelected ? 700 : 500, color: 'var(--color-text-main)', fontSize: 'var(--font-size-base)' }}>
                         {opt.label}
                       </span>
                       {opt.description && (
-                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', marginTop: '2px' }}>
                           {opt.description}
                         </span>
                       )}
@@ -292,15 +332,15 @@ export const StageClientInteraction: React.FC<Props> = ({
                   </label>
                 );
               })}
-            </div>
+            </fieldset>
           )}
 
-          {/* Opción múltiple */}
+          {/* Opción múltiple (checkboxes grandes) */}
           {stage.type === 'multiple_choice' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-              <p style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-main)' }}>
-                Podés seleccionar varias opciones:
-              </p>
+            <fieldset style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+              <legend style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-main)', marginBottom: 'var(--spacing-1)' }}>
+                Podés seleccionar una o más opciones:
+              </legend>
               {(stage.options || []).map((opt) => {
                 const isChecked = selectedChoices.includes(opt.id);
                 return (
@@ -309,12 +349,14 @@ export const StageClientInteraction: React.FC<Props> = ({
                     style={{
                       display: 'flex',
                       alignItems: 'center',
+                      minHeight: 'var(--touch-target-min)',
                       gap: 'var(--spacing-3)',
-                      padding: 'var(--spacing-3)',
+                      padding: '0.75rem var(--spacing-3)',
                       borderRadius: 'var(--radius-md)',
-                      border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-control-border)'}`,
                       backgroundColor: isChecked ? 'var(--color-primary-light)' : 'var(--color-surface)',
                       cursor: isClosed ? 'not-allowed' : 'pointer',
+                      boxSizing: 'border-box',
                     }}
                   >
                     <input
@@ -329,75 +371,116 @@ export const StageClientInteraction: React.FC<Props> = ({
                           setSelectedChoices(selectedChoices.filter((c) => c !== opt.id));
                         }
                       }}
-                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }}
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        accentColor: 'var(--color-primary)',
+                        cursor: isClosed ? 'not-allowed' : 'pointer',
+                        flexShrink: 0,
+                      }}
                     />
-                    <span>{opt.label}</span>
+                    <span style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-main)' }}>{opt.label}</span>
                   </label>
                 );
               })}
-            </div>
+            </fieldset>
           )}
 
           {/* Sí / No */}
           {stage.type === 'yes_no' && (
-            <div style={{ display: 'flex', gap: 'var(--spacing-3)' }}>
-              <Button
-                type="button"
-                variant={selectedChoice === 'yes' ? 'primary' : 'secondary'}
-                onClick={() => !isClosed && setSelectedChoice('yes')}
-                disabled={isClosed}
-                style={{ flex: 1 }}
-              >
-                Sí
-              </Button>
-              <Button
-                type="button"
-                variant={selectedChoice === 'no' ? 'primary' : 'secondary'}
-                onClick={() => !isClosed && setSelectedChoice('no')}
-                disabled={isClosed}
-                style={{ flex: 1 }}
-              >
-                No
-              </Button>
-            </div>
+            <fieldset style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+              <legend style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-main)', marginBottom: 'var(--spacing-1)' }}>
+                Seleccioná tu respuesta:
+              </legend>
+              <div style={{ display: 'flex', gap: 'var(--spacing-3)' }}>
+                <Button
+                  type="button"
+                  variant={selectedChoice === 'yes' ? 'primary' : 'secondary'}
+                  onClick={() => !isClosed && setSelectedChoice('yes')}
+                  disabled={isClosed}
+                  style={{ flex: 1 }}
+                >
+                  Sí
+                </Button>
+                <Button
+                  type="button"
+                  variant={selectedChoice === 'no' ? 'primary' : 'secondary'}
+                  onClick={() => !isClosed && setSelectedChoice('no')}
+                  disabled={isClosed}
+                  style={{ flex: 1 }}
+                >
+                  No
+                </Button>
+              </div>
+            </fieldset>
           )}
 
           {/* Texto libre */}
           {stage.type === 'open_text' && (
-            <textarea
-              value={openText}
-              disabled={isClosed}
-              onChange={(e) => setOpenText(e.target.value)}
-              placeholder="Escribí tu respuesta acá..."
-              rows={4}
-              style={{
-                width: '100%',
-                padding: 'var(--spacing-3)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                fontFamily: 'inherit',
-                fontSize: 'var(--font-size-base)',
-              }}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
+              <label
+                htmlFor="stage-open-text"
+                style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--color-text-main)' }}
+              >
+                Tu respuesta:
+              </label>
+              <textarea
+                id="stage-open-text"
+                value={openText}
+                disabled={isClosed}
+                onChange={(e) => setOpenText(e.target.value)}
+                placeholder="Escribí tu respuesta acá…"
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: 'var(--spacing-3)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-control-border)',
+                  fontFamily: 'inherit',
+                  fontSize: 'var(--font-size-base)',
+                  lineHeight: 'var(--line-height-normal)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text-main)',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
           )}
 
           {/* Cantidad entera */}
           {stage.type === 'integer_quantity' && (
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={quantity}
-              disabled={isClosed}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              style={{
-                width: '100%',
-                padding: 'var(--spacing-3)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                fontSize: 'var(--font-size-base)',
-              }}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
+              <label
+                htmlFor="stage-quantity"
+                style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--color-text-main)' }}
+              >
+                Cantidad:
+              </label>
+              <input
+                id="stage-quantity"
+                type="number"
+                min={0}
+                step={1}
+                value={quantity}
+                disabled={isClosed}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setQuantity(val === '' ? '' : Math.max(0, parseInt(val, 10)));
+                }}
+                placeholder="0"
+                style={{
+                  width: '100%',
+                  minHeight: 'var(--touch-target-min)',
+                  padding: '0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-control-border)',
+                  fontSize: 'var(--font-size-base)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text-main)',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
           )}
 
           {/* Estado de respuesta existente */}
@@ -405,6 +488,7 @@ export const StageClientInteraction: React.FC<Props> = ({
             <div
               style={{
                 backgroundColor: 'var(--color-surface-subtle)',
+                border: '1px solid var(--color-border)',
                 padding: 'var(--spacing-3)',
                 borderRadius: 'var(--radius-md)',
                 fontSize: 'var(--font-size-xs)',
@@ -412,35 +496,44 @@ export const StageClientInteraction: React.FC<Props> = ({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 'var(--spacing-1)',
               }}
             >
-              <span>Respuesta guardada (versión {response.version})</span>
+              <span>Respuesta guardada</span>
               <span>
+                Última actualización:{' '}
                 {new Date(response.updatedAt).toLocaleTimeString('es-UY', {
                   hour: '2-digit',
                   minute: '2-digit',
-                })}
+                })}{' '}
+                h
               </span>
             </div>
           )}
 
           {/* Botón de envío si la consulta sigue abierta */}
           {!isClosed ? (
-            <Button type="submit" isLoading={loading} fullWidth>
-              {response ? 'Modificar mi respuesta' : 'Enviar respuesta'}
+            <Button type="submit" isLoading={loading} fullWidth variant="primary">
+              {loading
+                ? 'Guardando respuesta…'
+                : response
+                ? 'Modificar respuesta'
+                : 'Guardar respuesta'}
             </Button>
           ) : (
             <div
               style={{
                 textAlign: 'center',
-                padding: 'var(--spacing-2)',
+                padding: 'var(--spacing-3)',
                 backgroundColor: 'var(--color-surface-subtle)',
+                border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
                 fontSize: 'var(--font-size-sm)',
                 color: 'var(--color-text-subtle)',
               }}
             >
-              🔒 Esta consulta está cerrada y no admite nuevos cambios.
+              Esta consulta está cerrada y no admite nuevas modificaciones.
             </div>
           )}
         </form>

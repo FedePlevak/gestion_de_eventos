@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './Button.module.css';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'outline';
@@ -16,53 +17,20 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   ...props
 }) => {
-  const baseStyles: React.CSSProperties = {
-    minHeight: 'var(--touch-target-min)',
-    padding: '0.75rem 1.25rem',
-    borderRadius: 'var(--radius-md)',
-    fontWeight: 600,
-    fontSize: 'var(--font-size-base)',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.5rem',
-    transition: 'all var(--transition-speed) ease',
-    cursor: disabled || isLoading ? 'not-allowed' : 'pointer',
-    opacity: disabled || isLoading ? 0.6 : 1,
-    width: fullWidth ? '100%' : 'auto',
-    textAlign: 'center',
-  };
-
-  const variantStyles: Record<string, React.CSSProperties> = {
-    primary: {
-      backgroundColor: 'var(--color-primary)',
-      color: 'var(--color-primary-text)',
-      boxShadow: 'var(--shadow-sm)',
-    },
-    secondary: {
-      backgroundColor: 'var(--color-surface-subtle)',
-      color: 'var(--color-text-main)',
-      border: '1px solid var(--color-border)',
-    },
-    danger: {
-      backgroundColor: 'var(--color-danger-text)',
-      color: '#ffffff',
-    },
-    outline: {
-      backgroundColor: 'transparent',
-      color: 'var(--color-primary)',
-      border: '2px solid var(--color-primary)',
-    },
-  };
+  const variantClass = styles[variant] || styles.primary;
+  const fullWidthClass = fullWidth ? styles.fullWidth : '';
+  const combinedClassName = `${styles.button} ${variantClass} ${fullWidthClass} ${className}`.trim();
 
   return (
     <button
-      style={{ ...baseStyles, ...variantStyles[variant], ...style }}
+      className={combinedClassName}
       disabled={disabled || isLoading}
-      className={className}
+      aria-busy={isLoading}
+      style={style}
       {...props}
     >
-      {isLoading ? <span>Cargando...</span> : children}
+      {isLoading && <span className={styles.spinner} aria-hidden="true" />}
+      <span>{children}</span>
     </button>
   );
 };

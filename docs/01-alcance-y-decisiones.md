@@ -80,8 +80,20 @@ No impiden comenzar el desarrollo con datos ficticios.
 - Nombre del piloto, fecha, zona horaria, nómina y organizadores iniciales.
 - Importe, moneda, instrucciones bancarias y familias alcanzadas por el cobro.
 - Dominio, cuentas de Firebase/Netlify, configuración del correo de Firebase Authentication, costos al contratar y responsable operativo. Los proveedores ya están elegidos en el documento 07.
-- Plazo de conservación de datos y comprobantes, aviso de privacidad y procedimiento de atención de solicitudes de eliminación.
-- Prueba de usabilidad con personas representativas del piloto y corrección de bloqueos encontrados.
+- Plazo de conservación de datos y prueba de usabilidad con personas representativas del piloto y corrección de bloqueos encontrados.
+
+## Negocio y marca · 13 de septiembre de 2026
+
+El usuario pidió revisar el desarrollo como negocio y preparar un brief, nombre e identidad visual aplicable al producto. Se incorpora esa entrega en [brief de negocio y marca](08-brief-de-negocio-y-marca.md) y [guía de identidad](09-guia-de-identidad-rondia.md). El 13 de septiembre de 2026 indicó continuar con esta identidad y preparar su implementación integral mobile-first; **Rondia y su sistema visual quedan confirmados como base de implementación de la plataforma**. La validación registral y de dominio continúa pendiente. El segmento inicial y el precio experimental permanecen como hipótesis comerciales. No se incorporan suscripciones, facturación, alta comercial o integraciones al MVP ni se habilita publicación.
+
+La implementación se rige por [docs/10](10-implementacion-marca-mobile-first.md), [docs/marca](marca/README.md) y la matriz específica de aceptación. El pedido actual autoriza preparar y ejecutar cambios locales de identidad; no autoriza despliegue, contratación de dominio, uso de datos reales ni envío de comunicaciones.
+
+El 13 de septiembre de 2026 se completó la implementación integral de la marca Rondia en código fuente local:
+- Tokens de diseño CSS en `src/styles/tokens.css` y contenedores mobile-first (máximo 640 px para interacción familiar y 1120 px para administración).
+- Eliminación de brechas de seguridad y autorización (RP01–RP05) y supresión de `tokenHash`/`secret` en props cliente entregadas al navegador.
+- Distinción funcional estricta entre «pago informado» (azul) y «pago recibido» (verde).
+- Navegación administrativa y familiar rediseñada para 360 px y 320 px sin depender de scroll horizontal o gestos ciegos.
+- Textos y plantillas de WhatsApp alineados con la voz de marca directa y cotidiana sin emojis artificiales.
 
 ## Qué significa MVP completado
 

@@ -109,7 +109,7 @@ export default function AdminDashboardPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Credenciales inválidas.');
+        throw new Error(data.error || 'Credenciales no válidas.');
       }
 
       setIsLogged(true);
@@ -148,7 +148,8 @@ export default function AdminDashboardPage() {
         eventDate: newEventDate ? new Date(newEventDate).toISOString() : undefined,
         paymentConfig: {
           enabled: enablePayment,
-          expectedAmountMinor: enablePayment && expectedAmount ? Math.round(Number(expectedAmount) * 100) : 0,
+          expectedAmountMinor:
+            enablePayment && expectedAmount ? Math.round(Number(expectedAmount) * 100) : 0,
           currency,
         },
       };
@@ -183,26 +184,28 @@ export default function AdminDashboardPage() {
         userBadge={isLogged && currentUser ? `${currentUser.name || currentUser.email}` : undefined}
       />
 
-      <main className="app-container">
+      <main className={isLogged ? 'app-container-admin' : 'app-container'} style={{ paddingTop: 'var(--spacing-6)', paddingBottom: 'var(--spacing-8)' }}>
         {loadingUser ? (
-          <div style={{ textAlign: 'center', padding: 'var(--spacing-6)', color: 'var(--color-text-subtle)' }}>
-            Comprobando sesión de organizador...
+          <div style={{ textAlign: 'center', padding: 'var(--spacing-8)', color: 'var(--color-text-subtle)' }}>
+            Comprobando sesión de organizador…
           </div>
         ) : !isLogged ? (
           /* Formulario de Login */
           <div style={{ maxWidth: '440px', margin: '0 auto', width: '100%' }}>
             <Card
-              title="Ingreso de Organizadores"
-              subtitle="Panel de administración y gestión de eventos"
+              title="Ingresá a Rondia"
+              subtitle="Acceso para integrantes del comité"
             >
               <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
                 {loginError && (
                   <div
+                    role="alert"
                     style={{
                       padding: 'var(--spacing-3)',
-                      borderRadius: 'var(--radius-sm)',
-                      backgroundColor: 'var(--color-error-surface, #ffebee)',
-                      color: 'var(--color-error-text, #c62828)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--color-danger-bg)',
+                      border: '1px solid var(--color-danger-border)',
+                      color: 'var(--color-danger-text)',
                       fontSize: 'var(--font-size-sm)',
                       fontWeight: 600,
                     }}
@@ -217,6 +220,7 @@ export default function AdminDashboardPage() {
                   placeholder="ejemplo@correo.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   required
                 />
 
@@ -226,11 +230,18 @@ export default function AdminDashboardPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   required
                 />
 
-                <Button type="submit" fullWidth variant="primary" isLoading={loginLoading} style={{ marginTop: 'var(--spacing-2)' }}>
-                  Ingresar al Panel
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="primary"
+                  isLoading={loginLoading}
+                  style={{ marginTop: 'var(--spacing-2)' }}
+                >
+                  Ingresar al panel
                 </Button>
               </form>
             </Card>
@@ -239,54 +250,70 @@ export default function AdminDashboardPage() {
           /* Panel de Organizador */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
             {/* Encabezado con bienvenida y botón para nuevo evento */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-3)' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 'var(--spacing-3)',
+              }}
+            >
               <div>
-                <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)' }}>
-                  Mis Eventos
+                <h2
+                  style={{
+                    fontSize: 'var(--font-size-2xl)',
+                    fontWeight: 700,
+                    color: 'var(--color-primary)',
+                    margin: 0,
+                    lineHeight: 'var(--line-height-tight)',
+                  }}
+                >
+                  Tus eventos
                 </h2>
-                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
+                <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', margin: 'var(--spacing-1) 0 0 0' }}>
                   Sesión iniciada como <strong>{currentUser?.email}</strong>
                 </p>
               </div>
 
-              <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+              <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
                 <Button
                   variant="primary"
                   onClick={() => setShowCreateModal(true)}
-                  style={{ minHeight: '38px', fontSize: 'var(--font-size-sm)' }}
                 >
-                  + Crear Nuevo Evento
+                  + Crear nuevo evento
                 </Button>
 
                 <Button
                   variant="outline"
                   onClick={handleLogout}
-                  style={{ minHeight: '38px', fontSize: 'var(--font-size-sm)' }}
                 >
-                  Cerrar Sesión
+                  Cerrar sesión
                 </Button>
               </div>
             </div>
 
-            {/* Modal para crear nuevo evento */}
+            {/* Modal / Formulario para crear nuevo evento */}
             {showCreateModal && (
               <Card
-                title="Crear Nuevo Evento"
+                title="Crear nuevo evento"
                 subtitle="Completá los datos básicos de la convocatoria"
                 action={
-                  <Button variant="secondary" onClick={() => setShowCreateModal(false)} style={{ minHeight: '32px' }}>
-                    ✕ Cancelar
+                  <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+                    Cancelar
                   </Button>
                 }
               >
                 <form onSubmit={handleCreateEvent} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
                   {createError && (
                     <div
+                      role="alert"
                       style={{
                         padding: 'var(--spacing-3)',
-                        borderRadius: 'var(--radius-sm)',
-                        backgroundColor: 'var(--color-error-surface, #ffebee)',
-                        color: 'var(--color-error-text, #c62828)',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: 'var(--color-danger-bg)',
+                        border: '1px solid var(--color-danger-border)',
+                        color: 'var(--color-danger-text)',
                         fontSize: 'var(--font-size-sm)',
                       }}
                     >
@@ -303,7 +330,7 @@ export default function AdminDashboardPage() {
                   />
 
                   <Input
-                    label="Descripción breve"
+                    label="Descripción breve (opcional)"
                     placeholder="Ej: Celebración de egresados de 6to de Primaria"
                     value={newEventDesc}
                     onChange={(e) => setNewEventDesc(e.target.value)}
@@ -316,32 +343,53 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setNewEventDate(e.target.value)}
                   />
 
-                  <div style={{ marginTop: 'var(--spacing-2)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+                  <div
+                    style={{
+                      marginTop: 'var(--spacing-2)',
+                      padding: 'var(--spacing-3)',
+                      backgroundColor: 'var(--color-surface-subtle)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--spacing-2)',
+                    }}
+                  >
                     <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
                         checked={enablePayment}
                         onChange={(e) => setEnablePayment(e.target.checked)}
+                        style={{ width: '18px', height: '18px' }}
                       />
-                      <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
-                        Habilitar cobro o aporte financiero por familia
+                      <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--color-text-main)' }}>
+                        Habilitar aporte económico o cuota por familia
                       </span>
                     </label>
 
                     {enablePayment && (
-                      <div style={{ display: 'flex', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-1)' }}>
-                        <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap', marginTop: 'var(--spacing-1)' }}>
+                        <div style={{ flex: 1, minWidth: '180px' }}>
                           <Input
-                            label="Monto esperado por familia"
+                            label="Importe esperado por familia"
                             type="number"
                             placeholder="Ej: 3000"
                             value={expectedAmount}
                             onChange={(e) => setExpectedAmount(e.target.value)}
+                            helperText="Ingresá el monto en números sin puntos"
                             required={enablePayment}
                           />
                         </div>
-                        <div style={{ width: '120px' }}>
-                          <label style={{ display: 'block', fontSize: 'var(--font-size-xs)', fontWeight: 600, marginBottom: 'var(--spacing-1)' }}>
+                        <div style={{ width: '130px' }}>
+                          <label
+                            style={{
+                              display: 'block',
+                              fontSize: 'var(--font-size-sm)',
+                              fontWeight: 600,
+                              color: 'var(--color-text-main)',
+                              marginBottom: 'var(--spacing-1)',
+                            }}
+                          >
                             Moneda
                           </label>
                           <select
@@ -349,11 +397,13 @@ export default function AdminDashboardPage() {
                             onChange={(e) => setCurrency(e.target.value)}
                             style={{
                               width: '100%',
-                              padding: '0.65rem',
+                              minHeight: 'var(--touch-target-min)',
+                              padding: '0.75rem',
                               borderRadius: 'var(--radius-md)',
-                              border: '1px solid var(--color-border)',
-                              fontSize: 'var(--font-size-sm)',
+                              border: '1px solid var(--color-control-border)',
+                              fontSize: 'var(--font-size-base)',
                               backgroundColor: 'var(--color-surface)',
+                              color: 'var(--color-text-main)',
                             }}
                           >
                             <option value="UYU">UYU ($)</option>
@@ -366,11 +416,11 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-3)' }}>
-                    <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
+                    <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
                       Cancelar
                     </Button>
                     <Button type="submit" variant="primary" isLoading={createLoading}>
-                      Crear Evento
+                      Crear evento
                     </Button>
                   </div>
                 </form>
@@ -379,21 +429,20 @@ export default function AdminDashboardPage() {
 
             {/* Listado de Eventos */}
             {loadingEvents ? (
-              <div style={{ textAlign: 'center', padding: 'var(--spacing-5)', color: 'var(--color-text-subtle)' }}>
-                Cargando tus eventos...
+              <div style={{ textAlign: 'center', padding: 'var(--spacing-6)', color: 'var(--color-text-subtle)' }}>
+                Cargando tus eventos…
               </div>
             ) : events.length === 0 ? (
               <Card
-                title="Aún no tenés eventos asignados"
-                subtitle="Creá tu primer evento para comenzar a convocar familias y crear etapas de votación"
+                title="Todavía no tenés eventos asignados"
+                subtitle="Creá tu primer evento para comenzar a convocar familias y crear consultas"
               >
                 <div style={{ textAlign: 'center', padding: 'var(--spacing-4) 0' }}>
-                  <div style={{ fontSize: '3rem', marginBottom: 'var(--spacing-2)' }}>🎉</div>
-                  <p style={{ color: 'var(--color-text-subtle)', marginBottom: 'var(--spacing-4)', fontSize: 'var(--font-size-sm)' }}>
-                    La base de datos está limpia y lista para tus eventos reales.
+                  <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-4)', fontSize: 'var(--font-size-sm)' }}>
+                    Al crear un evento podrás convocar familias, configurar consultas con votación y realizar el seguimiento de aportes.
                   </p>
                   <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-                    + Crear Mi Primer Evento
+                    + Crear mi primer evento
                   </Button>
                 </div>
               </Card>
@@ -408,17 +457,36 @@ export default function AdminDashboardPage() {
                         ? `Fecha: ${new Date(evt.eventDate).toLocaleDateString('es-UY', { dateStyle: 'long' })}`
                         : 'Sin fecha fijada'
                     }
-                    action={<Badge variant="success">Activo</Badge>}
+                    action={
+                      evt.status === 'active' ? (
+                        <Badge variant="success">Activo</Badge>
+                      ) : (
+                        <Badge variant="neutral">{evt.status}</Badge>
+                      )
+                    }
                   >
                     {evt.description && (
-                      <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-3)' }}>
+                      <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: '0 0 var(--spacing-3) 0' }}>
                         {evt.description}
                       </p>
                     )}
 
-                    <div style={{ display: 'flex', gap: 'var(--spacing-4)', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', marginBottom: 'var(--spacing-3)' }}>
-                      <span>👥 <strong>{evt.participantCount}</strong> familias convocadas</span>
-                      <span>📊 <strong>{evt.stageCount}</strong> consultas/etapas</span>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 'var(--spacing-4)',
+                        fontSize: 'var(--font-size-xs)',
+                        color: 'var(--color-text-subtle)',
+                        marginBottom: 'var(--spacing-3)',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span>
+                        <strong>{evt.participantCount}</strong> familias convocadas
+                      </span>
+                      <span>
+                        <strong>{evt.stageCount}</strong> consultas del evento
+                      </span>
                     </div>
 
                     <Link
@@ -430,13 +498,16 @@ export default function AdminDashboardPage() {
                         minHeight: 'var(--touch-target-min)',
                         padding: '0.75rem 1.25rem',
                         backgroundColor: 'var(--color-primary)',
-                        color: '#ffffff',
+                        color: 'var(--color-primary-text)',
                         borderRadius: 'var(--radius-md)',
                         fontWeight: 600,
+                        fontSize: 'var(--font-size-base)',
                         width: '100%',
+                        textAlign: 'center',
+                        boxSizing: 'border-box',
                       }}
                     >
-                      Administrar Evento →
+                      Administrar evento →
                     </Link>
                   </Card>
                 ))}

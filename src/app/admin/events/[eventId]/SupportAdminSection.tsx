@@ -81,32 +81,32 @@ export const SupportAdminSection: React.FC<Props> = ({ eventId, initialTickets }
       </div>
 
       {/* Filtros de estado */}
-      <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+      <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
         <Button
           variant={filter === 'all' ? 'primary' : 'secondary'}
           onClick={() => setFilter('all')}
-          style={{ minHeight: '32px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
         >
           Todas ({tickets.length})
         </Button>
         <Button
           variant={filter === 'new' ? 'primary' : 'secondary'}
           onClick={() => setFilter('new')}
-          style={{ minHeight: '32px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
         >
           Nuevas ({tickets.filter((t) => t.status === 'new').length})
         </Button>
         <Button
           variant={filter === 'in_progress' ? 'primary' : 'secondary'}
           onClick={() => setFilter('in_progress')}
-          style={{ minHeight: '32px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
         >
           En gestión ({tickets.filter((t) => t.status === 'in_progress').length})
         </Button>
         <Button
           variant={filter === 'resolved' ? 'primary' : 'secondary'}
           onClick={() => setFilter('resolved')}
-          style={{ minHeight: '32px', padding: '0.2rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
         >
           Resueltas ({tickets.filter((t) => t.status === 'resolved').length})
         </Button>
@@ -146,8 +146,8 @@ export const SupportAdminSection: React.FC<Props> = ({ eventId, initialTickets }
                         ticket.status === 'resolved'
                           ? 'success'
                           : ticket.status === 'in_progress'
-                          ? 'warning'
-                          : 'danger'
+                          ? 'info'
+                          : 'warning'
                       }
                     >
                       {ticket.status === 'new' && 'Nueva'}
@@ -191,7 +191,7 @@ export const SupportAdminSection: React.FC<Props> = ({ eventId, initialTickets }
                       }}
                     >
                       <span style={{ fontWeight: 700, color: 'var(--color-text-subtle)' }}>
-                        🔒 NOTAS INTERNAS DEL COMITÉ (No visibles para la familia):
+                        Notas internas del comité (no visibles para la familia):
                       </span>
                       {ticket.internalNotes.map((n) => (
                         <div key={n.id} style={{ color: 'var(--color-text-muted)' }}>
@@ -209,7 +209,7 @@ export const SupportAdminSection: React.FC<Props> = ({ eventId, initialTickets }
                         setNewStatus(ticket.status === 'new' ? 'in_progress' : ticket.status);
                         setResolutionSummary(ticket.resolutionSummary || '');
                       }}
-                      style={{ minHeight: '28px', padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
+                      style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                     >
                       {isEditing ? 'Cerrar edición' : 'Gestionar / Responder'}
                     </Button>

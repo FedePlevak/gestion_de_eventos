@@ -79,11 +79,11 @@ export const FamilySupportSection: React.FC<Props> = ({ eventId }) => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'new':
-        return <Badge variant="warning">Enviada</Badge>;
+        return <Badge variant="warning">Nueva</Badge>;
       case 'in_progress':
-        return <Badge variant="info">En revisión</Badge>;
+        return <Badge variant="info">En gestión</Badge>;
       case 'resolved':
-        return <Badge variant="success">Respondida</Badge>;
+        return <Badge variant="success">Resuelta</Badge>;
       case 'closed':
         return <Badge variant="neutral">Cerrada</Badge>;
       default:
@@ -95,11 +95,11 @@ export const FamilySupportSection: React.FC<Props> = ({ eventId }) => {
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
         <div>
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-text-main)' }}>
-            Consultas al Comité Organizador
+          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-primary)' }}>
+            Mis consultas al comité
           </h3>
           <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-            ¿Tenés dudas sobre el evento, el menú o las fechas? Escribinos directamente por aquí.
+            ¿Tenés dudas sobre el evento, el menú o las fechas? Escribinos directamente por acá.
           </p>
         </div>
 
@@ -107,15 +107,15 @@ export const FamilySupportSection: React.FC<Props> = ({ eventId }) => {
           <Button
             variant="outline"
             onClick={() => setIsFormOpen(true)}
-            style={{ fontSize: 'var(--font-size-sm)', padding: '0.4rem 0.8rem' }}
           >
-            + Hacer una consulta
+            + Nueva consulta
           </Button>
         )}
       </div>
 
       {message && (
         <div
+          role={message.type === 'error' ? 'alert' : 'status'}
           style={{
             backgroundColor: message.type === 'success' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
             color: message.type === 'success' ? 'var(--color-success-text)' : 'var(--color-danger-text)',
@@ -132,12 +132,11 @@ export const FamilySupportSection: React.FC<Props> = ({ eventId }) => {
       {/* Formulario desplegable */}
       {isFormOpen && (
         <Card
-          title="Nueva Consulta para el Comité"
+          title="Nueva consulta para el comité"
           action={
             <Button
               variant="secondary"
               onClick={() => setIsFormOpen(false)}
-              style={{ padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
             >
               Cerrar
             </Button>
@@ -146,17 +145,18 @@ export const FamilySupportSection: React.FC<Props> = ({ eventId }) => {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
             <Input
               label="Asunto de la consulta"
-              placeholder="Ej: Consulta sobre menú celíaco o estacionamiento"
+              placeholder="Ej: Menú celíaco o estacionamiento"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               required
             />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
-              <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+              <label htmlFor="ticket-description-input" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
                 Detalle o pregunta
               </label>
               <textarea
+                id="ticket-description-input"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Explicá tu consulta para que el comité pueda orientarte..."
@@ -166,7 +166,9 @@ export const FamilySupportSection: React.FC<Props> = ({ eventId }) => {
                   width: '100%',
                   padding: 'var(--spacing-2)',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
+                  border: '1px solid var(--color-control-border)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text-main)',
                   fontFamily: 'inherit',
                   fontSize: 'var(--font-size-sm)',
                   resize: 'vertical',
@@ -174,7 +176,7 @@ export const FamilySupportSection: React.FC<Props> = ({ eventId }) => {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
               <Button
                 type="button"
                 variant="secondary"
@@ -245,7 +247,7 @@ export const FamilySupportSection: React.FC<Props> = ({ eventId }) => {
                     }}
                   >
                     <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-success-text)' }}>
-                      Respuesta del Comité:
+                      Respuesta del comité:
                     </span>
                     <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-success-text)', marginTop: 'var(--spacing-1)' }}>
                       {t.resolutionSummary}

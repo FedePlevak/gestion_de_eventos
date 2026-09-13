@@ -25,7 +25,6 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
   try {
     sessionContext = await validateFamilySession(rawSessionId, params.eventId);
   } catch (error) {
-    // Si la sesión no es válida para este evento, redirigir a la página de canje
     redirect('/f');
   }
 
@@ -40,7 +39,7 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
   if (!eventDoc.exists) {
     return (
       <div className="app-container" style={{ textAlign: 'center', padding: 'var(--spacing-10) 0' }}>
-        <h2>Evento no encontrado</h2>
+        <h2>Evento no disponible</h2>
         <p style={{ color: 'var(--color-text-muted)' }}>El evento solicitado no existe o fue archivado.</p>
       </div>
     );
@@ -56,19 +55,24 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
   const { getFamilyPaymentStatus } = await import('@/modules/payments/service');
   const paymentData = await getFamilyPaymentStatus(sessionContext);
 
+  const rawFamilyName = sessionContext.familyName || 'Invitada';
+  const familyDisplayName = rawFamilyName.toLowerCase().startsWith('familia')
+    ? rawFamilyName
+    : `Familia ${rawFamilyName}`;
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header
         eventName={event.name}
-        userBadge={`Familia ${sessionContext.familyName}`}
+        userBadge={familyDisplayName}
         isOrganizer={false}
       />
 
-      <main className="app-container">
+      <main className="app-container" style={{ paddingTop: 'var(--spacing-4)', paddingBottom: 'var(--spacing-8)' }}>
         {/* Tarjeta de bienvenida y verificación de identidad */}
         <section
           style={{
-            backgroundColor: 'var(--color-primary-light)',
+            backgroundColor: 'var(--color-surface)',
             padding: 'var(--spacing-4)',
             borderRadius: 'var(--radius-lg)',
             border: '1px solid var(--color-border)',
@@ -77,103 +81,139 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
             gap: 'var(--spacing-1)',
           }}
         >
-          <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
-            ACCESO CONFIRMADO
+          <span
+            style={{
+              fontSize: 'var(--font-size-xs)',
+              fontWeight: 700,
+              color: 'var(--color-primary)',
+              letterSpacing: '0.03em',
+            }}
+          >
+            Acceso confirmado
           </span>
-          <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--color-primary)' }}>
-            Hola, Familia {sessionContext.familyName}
+          <h2
+            style={{
+              fontSize: 'var(--font-size-xl)',
+              fontWeight: 700,
+              color: 'var(--color-primary)',
+              margin: 0,
+              lineHeight: 'var(--line-height-tight)',
+            }}
+          >
+            Hola, {familyDisplayName}
           </h2>
-          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-main)' }}>
-            Bienvenida al espacio de coordinación para <strong>{event.name}</strong>. Aquí podés responder las consultas y coordinar el evento.
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
+            Este es el espacio de tu familia para <strong>{event.name}</strong>. Podés responder las consultas y seguir el estado de tu aporte.
           </p>
         </section>
 
-        {/* Sección de Etapas del Evento con Resumen de Avance Unificado */}
+        {/* Sección de Consultas y Resumen */}
         {(() => {
           const hasPaymentStage = Boolean(paymentData?.enabled);
-          const isPaymentComplete =
-            hasPaymentStage &&
-            (paymentData.payment.status === 'reported' || paymentData.payment.status === 'verified');
-          const isPaymentPending = hasPaymentStage && !isPaymentComplete;
+          const paymentStatus = paymentData?.payment?.status || 'pending';
+          const isPaymentPending = hasPaymentStage && paymentStatus === 'pending';
+          const isPaymentReported = hasPaymentStage && paymentStatus === 'reported';
+          const isPaymentRevision = hasPaymentStage && paymentStatus === 'requires_revision';
+          const isPaymentVerified = hasPaymentStage && paymentStatus === 'verified';
 
-          const surveyAnsweredCount = stages.filter((s) => s.hasResponded || s.hasRead).length;
           const surveyPendingCount = stages.filter((s) => !s.hasResponded && !s.hasRead && !s.isClosed).length;
-
-          const totalStagesCount = stages.length + (hasPaymentStage ? 1 : 0);
-          const totalCompletedCount = surveyAnsweredCount + (isPaymentComplete ? 1 : 0);
-          const totalPendingCount = surveyPendingCount + (isPaymentPending ? 1 : 0);
-          const progressPercent = totalStagesCount > 0 ? Math.round((totalCompletedCount / totalStagesCount) * 100) : 100;
+          const totalFamilyPendingActions = surveyPendingCount + (isPaymentPending || isPaymentRevision ? 1 : 0);
 
           return (
             <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
-                <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-text-main)' }}>
-                  Etapas y Consultas del Evento
+                <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-text-main)', margin: 0 }}>
+                  Consultas e información del evento
                 </h3>
                 <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                  {totalStagesCount} etapa{totalStagesCount === 1 ? '' : 's'} activa{totalStagesCount === 1 ? '' : 's'}
+                  {stages.length + (hasPaymentStage ? 1 : 0)} sección/secciones
                 </span>
               </div>
 
-              {/* Barra de progreso unificada de la familia */}
-              {totalStagesCount > 0 && (
-                <div
+              {/* Banner de estado de avance familiar */}
+              <div
+                style={{
+                  backgroundColor: totalFamilyPendingActions > 0
+                    ? 'var(--color-warning-bg)'
+                    : isPaymentReported
+                    ? 'var(--color-info-bg)'
+                    : 'var(--color-success-bg)',
+                  border: `1px solid ${
+                    totalFamilyPendingActions > 0
+                      ? 'var(--color-warning-border)'
+                      : isPaymentReported
+                      ? 'var(--color-info-border)'
+                      : 'var(--color-success-border)'
+                  }`,
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--spacing-3) var(--spacing-4)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--spacing-1)',
+                }}
+              >
+                <strong
                   style={{
-                    backgroundColor: totalPendingCount > 0 ? 'var(--color-surface)' : 'var(--color-success-surface, #e8f5e9)',
-                    border: totalPendingCount > 0 ? '1px solid var(--color-border)' : '1px solid var(--color-success-border, #c8e6c9)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: 'var(--spacing-3) var(--spacing-4)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 'var(--spacing-2)',
+                    fontSize: 'var(--font-size-sm)',
+                    color: totalFamilyPendingActions > 0
+                      ? 'var(--color-warning-text)'
+                      : isPaymentReported
+                      ? 'var(--color-info-text)'
+                      : 'var(--color-success-text)',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ fontSize: 'var(--font-size-sm)', color: totalPendingCount > 0 ? 'var(--color-text-main)' : 'var(--color-success-text, #2e7d32)' }}>
-                      {totalPendingCount > 0
-                        ? `🔔 Tenés ${totalPendingCount} etapa${totalPendingCount > 1 ? 's' : ''} pendiente${totalPendingCount > 1 ? 's' : ''} de completar`
-                        : '🎉 ¡Completaste todas las etapas activas de este evento!'}
-                    </strong>
-                    <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
-                      {totalCompletedCount} de {totalStagesCount} completadas ({progressPercent}%)
-                    </span>
-                  </div>
+                  {totalFamilyPendingActions > 0
+                    ? `Tenés ${totalFamilyPendingActions} acción/acciones pendientes de responder o informar.`
+                    : isPaymentReported
+                    ? 'No tenés respuestas pendientes. Tu pago sigue esperando verificación del comité.'
+                    : 'Completaste todas tus respuestas y tu aporte está verificado.'}
+                </strong>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 'var(--font-size-xs)',
+                    color: totalFamilyPendingActions > 0
+                      ? 'var(--color-warning-text)'
+                      : isPaymentReported
+                      ? 'var(--color-info-text)'
+                      : 'var(--color-success-text)',
+                  }}
+                >
+                  {totalFamilyPendingActions > 0
+                    ? 'Revisá las tarjetas marcadas como pendientes abajo para completar tu participación.'
+                    : isPaymentReported
+                    ? 'El comité cotejará tu transferencia con la cuenta bancaria para confirmar la recepción.'
+                    : 'Podés consultar tus respuestas guardadas en cualquier momento.'}
+                </p>
+              </div>
 
-                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        width: `${progressPercent}%`,
-                        height: '100%',
-                        backgroundColor: progressPercent === 100 ? 'var(--color-success, #2e7d32)' : 'var(--color-primary)',
-                        transition: 'width 0.4s ease',
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {totalStagesCount === 0 ? (
+              {stages.length === 0 && !hasPaymentStage ? (
                 <Card>
                   <div style={{ textAlign: 'center', padding: 'var(--spacing-4) 0', color: 'var(--color-text-muted)' }}>
-                    <p style={{ fontWeight: 600 }}>No hay etapas abiertas en este momento.</p>
-                    <p style={{ fontSize: 'var(--font-size-sm)', marginTop: 'var(--spacing-1)' }}>
-                      El comité organizador te avisará cuando haya una nueva etapa disponible para participar.
+                    <p style={{ fontWeight: 600, margin: 0 }}>Todavía no hay información o consultas disponibles.</p>
+                    <p style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--spacing-1)', color: 'var(--color-text-subtle)' }}>
+                      El comité te avisará cuando haya novedades.
                     </p>
                   </div>
                 </Card>
               ) : (
                 <>
-                  {/* Etapas de votación / consultas */}
+                  {/* Consultas y etapas del evento */}
                   {stages.map((stage) => {
                     const isPending = !stage.hasResponded && !stage.hasRead && !stage.isClosed;
 
-                    let badgeElement = <Badge variant="warning">⏳ Pendiente</Badge>;
+                    let badgeElement = (
+                      <Badge variant="warning">
+                        {stage.type === 'info' ? 'Pendiente de leer' : 'Pendiente de respuesta'}
+                      </Badge>
+                    );
+
                     if (stage.hasResponded) {
-                      badgeElement = <Badge variant="success">✓ Ya respondiste</Badge>;
+                      badgeElement = <Badge variant="success">Respuesta guardada</Badge>;
                     } else if (stage.hasRead) {
-                      badgeElement = <Badge variant="success">✓ Lectura confirmada</Badge>;
+                      badgeElement = <Badge variant="success">Lectura confirmada</Badge>;
                     } else if (stage.isClosed) {
-                      badgeElement = <Badge variant="neutral">Cerrada</Badge>;
+                      badgeElement = <Badge variant="neutral">Consulta cerrada</Badge>;
                     }
 
                     return (
@@ -187,7 +227,7 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                           subtitle={
                             stage.deadlineAt ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '2px' }}>
-                                <span>📅 Cierre: {new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                <span>Plazo: {new Date(stage.deadlineAt).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' })} h</span>
                                 <StageCountdown deadlineAt={stage.deadlineAt} isClosed={stage.isClosed} variant="compact" />
                               </div>
                             ) : undefined
@@ -208,11 +248,11 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                                   alignItems: 'center',
                                   gap: '0.3rem',
                                   fontSize: 'var(--font-size-sm)',
-                                  fontWeight: 700,
+                                  fontWeight: 600,
                                   color: 'var(--color-primary)',
                                 }}
                               >
-                                👉 Responder consulta ahora →
+                                {stage.type === 'info' ? 'Leer información →' : 'Responder consulta →'}
                               </span>
                             ) : (
                               <span
@@ -232,54 +272,54 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                     );
                   })}
 
-                  {/* Etapa de Cuota / Aporte Financiero (integrada visualmente como etapa) */}
+                  {/* Cuota / Aporte Financiero */}
                   {hasPaymentStage && (
                     <Link
                       href={`/e/${params.eventId}/payment`}
                       style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                     >
                       <Card
-                        title="Cuota o Aporte del Evento"
+                        title="Aporte económico para el evento"
                         subtitle={
                           paymentData.expectedAmountMinor > 0
-                            ? `Importe fijado: $${(paymentData.expectedAmountMinor / 100).toLocaleString('es-UY')} ${paymentData.currency}`
+                            ? `Importe fijado: ${(paymentData.currency || 'UYU')} ${(paymentData.expectedAmountMinor / 100).toLocaleString('es-UY')}`
                             : 'Monto a coordinar'
                         }
                         action={
-                          paymentData.payment.status === 'verified' ? (
-                            <Badge variant="success">✓ Aporte verificado</Badge>
-                          ) : paymentData.payment.status === 'reported' ? (
-                            <Badge variant="info">🟡 En revisión del comité</Badge>
-                          ) : paymentData.payment.status === 'requires_revision' ? (
-                            <Badge variant="danger">⚠️ Requiere corrección</Badge>
+                          isPaymentVerified ? (
+                            <Badge variant="success">Pago recibido</Badge>
+                          ) : isPaymentReported ? (
+                            <Badge variant="info">Pago informado · Pendiente de verificación</Badge>
+                          ) : isPaymentRevision ? (
+                            <Badge variant="warning">Hay un dato para revisar</Badge>
                           ) : (
-                            <Badge variant="warning">⏳ Pendiente de aporte</Badge>
+                            <Badge variant="warning">Pendiente de informar</Badge>
                           )
                         }
                       >
                         <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: 'var(--spacing-1) 0' }}>
-                          {paymentData.payment.status === 'verified'
-                            ? 'El comité confirmó la recepción de tu transferencia bancaria. ¡Muchas gracias!'
-                            : paymentData.payment.status === 'reported'
-                            ? 'Informaste tu transferencia. El comité revisará tu comprobante a la brevedad.'
-                            : paymentData.payment.status === 'requires_revision'
+                          {isPaymentVerified
+                            ? 'El comité verificó la recepción de tu transferencia bancaria. ¡Muchas gracias!'
+                            : isPaymentReported
+                            ? 'Enviaste tu informe de pago. El comité lo verificará contra la cuenta bancaria.'
+                            : isPaymentRevision
                             ? 'El comité solicitó revisar el comprobante o el importe informado.'
-                            : 'Podés consultar las instrucciones bancarias, realizar la transferencia e informar tu comprobante para revisión del comité.'}
+                            : 'Podés consultar las instrucciones bancarias, realizar la transferencia y adjuntar tu comprobante.'}
                         </p>
 
                         <div style={{ marginTop: 'var(--spacing-2)' }}>
-                          {isPaymentPending ? (
+                          {isPaymentPending || isPaymentRevision ? (
                             <span
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '0.3rem',
                                 fontSize: 'var(--font-size-sm)',
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 color: 'var(--color-primary)',
                               }}
                             >
-                              👉 Informar aporte o ver datos bancarios →
+                              Informar aporte o ver datos bancarios →
                             </span>
                           ) : (
                             <span
@@ -290,7 +330,7 @@ export default async function FamilyEventDashboardPage({ params }: PageProps) {
                                 color: 'var(--color-text-subtle)',
                               }}
                             >
-                              Ver detalle y estado de mi comprobante →
+                              Ver detalle del informe →
                             </span>
                           )}
                         </div>

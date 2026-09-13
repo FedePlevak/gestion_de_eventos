@@ -15,28 +15,28 @@ export const ExportAdminSection: React.FC<Props> = ({ eventId }) => {
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-      <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>
-        Exportación de Datos y Cierre del Evento
+      <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-primary)' }}>
+        Exportación de datos y cierre del evento
       </h3>
       <Card
-        title="Descarga de Planillas para el Comité"
+        title="Descarga de planillas para el comité"
         subtitle="Archivos CSV estructurados con codificación UTF-8 para apertura directa en Microsoft Excel o Google Sheets."
       >
         <div style={{ display: 'flex', gap: 'var(--spacing-3)', flexWrap: 'wrap' }}>
           <Button
             variant="outline"
             onClick={() => handleDownload('responses')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-1)' }}
+            style={{ minHeight: 'var(--touch-target-min)', padding: '0.4rem 0.9rem' }}
           >
-            📊 Descargar CSV de Respuestas
+            Descargar CSV de respuestas
           </Button>
 
           <Button
             variant="outline"
             onClick={() => handleDownload('payments')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-1)' }}
+            style={{ minHeight: 'var(--touch-target-min)', padding: '0.4rem 0.9rem' }}
           >
-            💰 Descargar CSV de Conciliación de Pagos
+            Descargar CSV de pagos
           </Button>
         </div>
       </Card>

@@ -88,6 +88,7 @@ Usar datos ficticios, reloj controlado para límites y casos de zonas horarias. 
 - Retención y privacidad definidas; costos y límites de servicios verificados.
 - No quedan mocks o datos simulados en recorridos que se presentan como funcionales.
 - Existe procedimiento de atención de fallos y habilitación explícita para publicar y distribuir accesos.
+- La identidad Rondia está aplicada según [docs/10](10-implementacion-marca-mobile-first.md) y pasa la [matriz visual, móvil y de privacidad](marca/06-aceptacion-y-evidencia.md). El dossier de marca no cuenta como evidencia de la aplicación real.
 
 ## Registro de ejecución
 
@@ -118,4 +119,3 @@ Usar datos ficticios, reloj controlado para límites y casos de zonas horarias. 
 | S01 | v0.4.0 | Local / Vitest | 2026-09-08 | PASÓ | `tests/communication.test.ts` (aislamiento estricto de tickets de soporte por familia) |
 | S02 | v0.4.0 | Local / Vitest | 2026-09-08 | PASÓ | `tests/communication.test.ts` (supresión absoluta de notas internas en vistas familiares) |
 | S03 | v0.4.0 | Local / Vitest | 2026-09-08 | PASÓ | `tests/communication.test.ts` (plantillas y enlaces wa.me sin envíos automáticos ni efectos colaterales) |
-

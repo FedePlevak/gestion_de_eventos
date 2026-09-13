@@ -1,0 +1,60 @@
+{
+  "viewport_checks": [
+    {
+      "width": 1360,
+      "documentWidth": 1360,
+      "overflow": false,
+      "images": true
+    },
+    {
+      "width": 1024,
+      "documentWidth": 1024,
+      "overflow": false,
+      "images": true
+    },
+    {
+      "width": 736,
+      "documentWidth": 736,
+      "overflow": false,
+      "images": true
+    },
+    {
+      "width": 360,
+      "documentWidth": 360,
+      "overflow": false,
+      "images": true
+    },
+    {
+      "width": 320,
+      "documentWidth": 320,
+      "overflow": false,
+      "images": true
+    }
+  ],
+  "interactions": [
+    {
+      "action": "Guardar respuesta familiar",
+      "pass": true,
+      "paymentStillUnverified": true
+    },
+    {
+      "action": "Simular verificación administrativa",
+      "pass": true,
+      "verified": "UYU 142.500",
+      "reported": "UYU 17.500"
+    }
+  ],
+  "console_errors": [],
+  "pdf": {
+    "paginas": 17,
+    "sin_paginas_vacias": true,
+    "revision_visual": "17 páginas renderizadas; vista general y pantallas inspeccionadas"
+  },
+  "inline": {
+    "anchos": [
+      736,
+      360
+    ],
+    "interaccion": "guardado de ejemplo verificado"
+  }
+}

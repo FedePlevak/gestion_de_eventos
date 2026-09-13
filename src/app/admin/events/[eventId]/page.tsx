@@ -1,7 +1,12 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { cookies, headers } from 'next/headers';
 import { Header } from '@/components/Header';
 import { getAdminDb } from '@/server/firebase-admin';
+import {
+  getOrganizerContextFromCookies,
+  validateOrganizerEventAccess,
+} from '@/modules/access/organizer-service';
 import { OrganizerEventTabs } from './OrganizerEventTabs';
 
 interface PageProps {
@@ -13,24 +18,60 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminEventDetailPage({ params }: PageProps) {
-  const db = getAdminDb();
-  let workspaceId = 'principal';
-  let eventRef = db.collection('workspaces').doc(workspaceId).collection('events').doc(params.eventId);
-  let eventDoc = await eventRef.get();
+  const cookieStore = cookies();
+  const headerStore = headers();
+  let organizerContext;
 
-  // Si no está en principal, buscar en otros workspaces (ej. en caso de datos de tests)
-  if (!eventDoc.exists) {
-    const wsSnap = await db.collection('workspaces').get();
-    for (const ws of wsSnap.docs) {
-      const eDoc = await ws.ref.collection('events').doc(params.eventId).get();
-      if (eDoc.exists) {
-        workspaceId = ws.id;
-        eventRef = ws.ref.collection('events').doc(params.eventId);
-        eventDoc = eDoc;
-        break;
+  try {
+    organizerContext = await getOrganizerContextFromCookies(cookieStore, headerStore);
+  } catch (error) {
+    console.error('Error de autenticación al cargar /admin/events/[eventId]:', error);
+    redirect('/admin');
+  }
+
+  let workspaceId = organizerContext.workspaceId || 'principal';
+
+  // Validar membresía activa del organizador en el evento y espacio autorizados (Reglas A04 y A05)
+  try {
+    await validateOrganizerEventAccess(organizerContext, params.eventId, workspaceId);
+  } catch (error) {
+    // Si no está en su workspace principal, verificar si el evento existe en otro workspace donde sí tenga membresía
+    const db = getAdminDb();
+    let foundAccess = false;
+    try {
+      const wsSnap = await db.collection('workspaces').get();
+      for (const ws of wsSnap.docs) {
+        if (ws.id === workspaceId) continue;
+        try {
+          await validateOrganizerEventAccess(organizerContext, params.eventId, ws.id);
+          workspaceId = ws.id;
+          foundAccess = true;
+          break;
+        } catch {
+          // continuar con el siguiente
+        }
       }
+    } catch {
+      // ignorar
+    }
+
+    if (!foundAccess) {
+      console.warn('Acceso denegado a organizador para el evento:', {
+        organizer: organizerContext.email,
+        eventId: params.eventId,
+        workspaceId,
+      });
+      notFound();
     }
   }
+
+  const db = getAdminDb();
+  const eventRef = db
+    .collection('workspaces')
+    .doc(workspaceId)
+    .collection('events')
+    .doc(params.eventId);
+  const eventDoc = await eventRef.get();
 
   if (!eventDoc.exists) {
     notFound();
@@ -69,7 +110,6 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
     contactEmail: d.data().contactEmail,
     classCode: d.data().classCode || undefined,
     customFields: d.data().customFields || undefined,
-    secret: d.data().accessSecret || d.data().tokenHash,
   }));
 
   // 3. Obtener pagos

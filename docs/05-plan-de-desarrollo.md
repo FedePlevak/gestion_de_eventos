@@ -10,6 +10,7 @@ Trabajar por recorridos funcionales completos. Cada incremento debe ser demostra
 - Inicializar el stack del documento 07, fijar versiones estables compatibles y validar integración de sesiones, transacciones, correo y archivos privados. No volver a abrir la selección de proveedores sin un impedimento concreto.
 - Diseñar pantallas móviles de entrada familiar, etapa, pago, creación de etapa y revisión administrativa.
 - Preparar datos ficticios: dos espacios, varios grupos, dos eventos en un mismo espacio, organizadores con accesos distintos y familias compartidas entre eventos.
+- Aplicar la identidad Rondia conforme a [docs/10](10-implementacion-marca-mobile-first.md) y [docs/marca](marca/README.md). Resolver primero los bloqueos funcionales que afecten la veracidad o privacidad de las nuevas pantallas.
 
 Salida: decisiones técnicas registradas y recorridos revisables. Sin invitaciones reales ni dependencia del sistema existente.
 
@@ -60,6 +61,7 @@ Salida: no se confunde dinero informado con recibido; ningún reintento duplica 
 - Revisar permisos, adjuntos privados, manejo de errores y recuperación.
 - Completar escenarios de aceptación y pruebas móviles.
 - Hacer prueba de usabilidad y corregir bloqueos.
+- Completar la cobertura y evidencia de [aceptación de Rondia](marca/06-aceptacion-y-evidencia.md), incluidos 320/360 px, teclado y texto al 200 %.
 - Validar datos reales, conservación, presupuesto y responsables operativos.
 - Preparar despliegue, respaldo, reversión e invitaciones para habilitación explícita.
 

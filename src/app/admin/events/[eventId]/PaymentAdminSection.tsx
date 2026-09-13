@@ -298,9 +298,9 @@ export const PaymentAdminSection: React.FC<Props> = ({
               <Button
                 variant="outline"
                 onClick={() => setShowConfigForm(!showConfigForm)}
-                style={{ fontSize: 'var(--font-size-xs)', padding: '0.4rem 0.8rem' }}
+                style={{ fontSize: 'var(--font-size-xs)', minHeight: 'var(--touch-target-min)', padding: '0.4rem 0.8rem' }}
               >
-                {showConfigForm ? 'Cerrar Ajustes' : '⚙️ Configurar Monto / Cuenta'}
+                {showConfigForm ? 'Cerrar ajustes' : 'Configurar monto y cuenta'}
               </Button>
 
               {config.enabled ? (
@@ -310,13 +310,12 @@ export const PaymentAdminSection: React.FC<Props> = ({
                   isLoading={savingConfig}
                   style={{
                     fontSize: 'var(--font-size-xs)',
+                    minHeight: 'var(--touch-target-min)',
                     padding: '0.4rem 0.9rem',
-                    borderColor: '#eab308',
-                    color: '#b45309',
-                    fontWeight: 700,
+                    fontWeight: 600,
                   }}
                 >
-                  🚫 Ocultar cuota a las familias
+                  Ocultar cuota a las familias
                 </Button>
               ) : (
                 <Button
@@ -325,13 +324,12 @@ export const PaymentAdminSection: React.FC<Props> = ({
                   isLoading={savingConfig}
                   style={{
                     fontSize: 'var(--font-size-xs)',
+                    minHeight: 'var(--touch-target-min)',
                     padding: '0.4rem 0.9rem',
-                    backgroundColor: '#16a34a',
-                    color: '#fff',
-                    fontWeight: 700,
+                    fontWeight: 600,
                   }}
                 >
-                  👁️ Mostrar / Publicar cuota a las familias
+                  Habilitar cuota para las familias
                 </Button>
               )}
             </div>
@@ -352,7 +350,7 @@ export const PaymentAdminSection: React.FC<Props> = ({
               }}
             >
               <h4 style={{ margin: 0, fontSize: 'var(--font-size-sm)', fontWeight: 700 }}>
-                Ajustes de la Cuota e Instrucciones Bancarias
+                Ajustes de la cuota e instrucciones bancarias
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--spacing-2)' }}>
                 <div>
@@ -374,9 +372,10 @@ export const PaymentAdminSection: React.FC<Props> = ({
                     onChange={(e) => setEditCurrency(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '0.65rem',
+                      minHeight: 'var(--touch-target-min)',
+                      padding: '0.55rem',
                       borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--color-border)',
+                      border: '1px solid var(--color-control-border)',
                       fontSize: 'var(--font-size-sm)',
                       backgroundColor: 'var(--color-surface)',
                     }}
@@ -390,47 +389,49 @@ export const PaymentAdminSection: React.FC<Props> = ({
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--spacing-2)' }}>
                 <Input
-                  label="Banco o Entidad"
+                  label="Banco o entidad"
                   placeholder="Ej: Banco República (BROU), Santander, Itaú"
                   value={editBankName}
                   onChange={(e) => setEditBankName(e.target.value)}
                 />
                 <Input
                   label="Titular de la cuenta"
-                  placeholder="Ej: Comisión de Padres Bambini 5"
+                  placeholder="Ej: Comisión de Familias"
                   value={editAccountHolder}
                   onChange={(e) => setEditAccountHolder(e.target.value)}
                 />
                 <Input
-                  label="Número de Cuenta / CBU"
+                  label="Número de cuenta / CBU"
                   placeholder="Ej: 001234567-00001"
                   value={editAccountNumber}
                   onChange={(e) => setEditAccountNumber(e.target.value)}
                 />
                 <Input
                   label="Alias / Referencia (opcional)"
-                  placeholder="Ej: bambini5.fin.de.ano"
+                  placeholder="Ej: evento.egresados.2026"
                   value={editAlias}
                   onChange={(e) => setEditAlias(e.target.value)}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 'var(--font-size-xs)', fontWeight: 600, marginBottom: 'var(--spacing-1)' }}>
+                <label htmlFor="payment-notes-input" style={{ display: 'block', fontSize: 'var(--font-size-xs)', fontWeight: 600, marginBottom: 'var(--spacing-1)' }}>
                   Notas o instrucciones para las familias
                 </label>
                 <textarea
+                  id="payment-notes-input"
                   rows={2}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="Ej: Indicar el nombre del alumno/a en el concepto de la transferencia."
+                  placeholder="Ej: Indicar el nombre del alumno en el concepto de la transferencia."
                   style={{
                     width: '100%',
                     padding: '0.5rem',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--color-border)',
+                    border: '1px solid var(--color-control-border)',
                     fontSize: 'var(--font-size-sm)',
                     backgroundColor: 'var(--color-surface)',
+                    color: 'var(--color-text-main)',
                   }}
                 />
               </div>
@@ -440,7 +441,7 @@ export const PaymentAdminSection: React.FC<Props> = ({
                   Cancelar
                 </Button>
                 <Button type="submit" variant="primary" isLoading={savingConfig}>
-                  💾 Guardar Cambios
+                  Guardar cambios
                 </Button>
               </div>
             </form>
@@ -458,11 +459,11 @@ export const PaymentAdminSection: React.FC<Props> = ({
             textAlign: 'center',
           }}
         >
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>Pagos Verificados</span>
-          <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)' }}>
-            $ {(summary.verifiedTotalAmountMinor / 100).toLocaleString('es-UY')}
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>Pagos recibidos</span>
+          <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>
+            ${(summary.verifiedTotalAmountMinor / 100).toLocaleString('es-UY')}
           </p>
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success-text)' }}>
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success-text)', fontVariantNumeric: 'tabular-nums' }}>
             {summary.verifiedCount} de {summary.totalFamilies} aportes
           </span>
         </div>
@@ -476,12 +477,12 @@ export const PaymentAdminSection: React.FC<Props> = ({
             textAlign: 'center',
           }}
         >
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>Por Verificar</span>
-          <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-warning-text)' }}>
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>Por verificar</span>
+          <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-info-text)', fontVariantNumeric: 'tabular-nums' }}>
             {summary.reportedPendingCount}
           </p>
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning-text)' }}>
-            $ {(summary.reportedPendingAmountMinor / 100).toLocaleString('es-UY')} informados
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-info-text)', fontVariantNumeric: 'tabular-nums' }}>
+            ${(summary.reportedPendingAmountMinor / 100).toLocaleString('es-UY')} informados
           </span>
         </div>
 
@@ -494,8 +495,8 @@ export const PaymentAdminSection: React.FC<Props> = ({
             textAlign: 'center',
           }}
         >
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>Sin Informar</span>
-          <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-text-subtle)' }}>
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>Sin informar</span>
+          <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
             {summary.pendingCount}
           </p>
           <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
@@ -542,34 +543,34 @@ export const PaymentAdminSection: React.FC<Props> = ({
       </div>
 
       {/* Filtros de lista */}
-      <div style={{ display: 'flex', gap: 'var(--spacing-2)', overflowX: 'auto', paddingBottom: 'var(--spacing-1)' }}>
+      <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap', paddingBottom: 'var(--spacing-1)' }}>
         <Button
           variant={filter === 'all' ? 'primary' : 'secondary'}
           onClick={() => setFilter('all')}
-          style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
         >
           Todas ({payments.length})
         </Button>
         <Button
           variant={filter === 'reported' ? 'primary' : 'secondary'}
           onClick={() => setFilter('reported')}
-          style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
         >
           Por verificar ({summary.reportedPendingCount})
         </Button>
         <Button
           variant={filter === 'verified' ? 'primary' : 'secondary'}
           onClick={() => setFilter('verified')}
-          style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
         >
-          Verificados ({summary.verifiedCount})
+          Recibidos ({summary.verifiedCount})
         </Button>
         <Button
           variant={filter === 'pending' ? 'primary' : 'secondary'}
           onClick={() => setFilter('pending')}
-          style={{ minHeight: '32px', padding: '0.25rem 0.6rem', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
         >
-          Pendientes ({summary.pendingCount})
+          Sin informar ({summary.pendingCount})
         </Button>
       </div>
 
@@ -597,10 +598,10 @@ export const PaymentAdminSection: React.FC<Props> = ({
                   gap: 'var(--spacing-2)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
                   <div>
                     <p style={{ fontWeight: 600 }}>Familia {item.familyName}</p>
-                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
                       {status === 'verified' && `Verificado: $${(p!.verifiedAmountMinor! / 100).toLocaleString('es-UY')}`}
                       {status === 'reported' && `Informó $${(p!.declaredAmountMinor! / 100).toLocaleString('es-UY')} el ${p!.transferDate}`}
                       {status === 'requires_revision' && `Corrección solicitada: "${p!.revisionReason}"`}
@@ -613,23 +614,23 @@ export const PaymentAdminSection: React.FC<Props> = ({
                       status === 'verified'
                         ? 'success'
                         : status === 'reported'
-                        ? 'warning'
+                        ? 'info'
                         : status === 'requires_revision'
                         ? 'danger'
                         : 'neutral'
                     }
                   >
-                    {status === 'verified' && 'Verificado'}
-                    {status === 'reported' && 'Por verificar'}
+                    {status === 'verified' && 'Pago recibido'}
+                    {status === 'reported' && 'Pago informado'}
                     {status === 'requires_revision' && 'En revisión'}
-                    {status === 'pending' && 'Pendiente'}
+                    {status === 'pending' && 'Sin informar'}
                   </Badge>
                 </div>
 
                 {/* Comprobante adjunto si existe */}
                 {p?.attachment && (
                   <div style={{ fontSize: 'var(--font-size-xs)', display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
-                    <span>📄 Comprobante: {p.attachment.fileName}</span>
+                    <span>Comprobante: {p.attachment.fileName}</span>
                     <a
                       href={`/api/payments/receipts/${p.attachment.id}?eventId=${eventId}&participantId=${item.id}&path=${encodeURIComponent(p.attachment.storagePath)}`}
                       target="_blank"
@@ -652,9 +653,9 @@ export const PaymentAdminSection: React.FC<Props> = ({
                           setActiveAction('verify');
                           setInputAmount(String((p?.declaredAmountMinor || summary.expectedAmountPerFamilyMinor) / 100));
                         }}
-                        style={{ minHeight: '30px', padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
+                        style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                       >
-                        ✓ Verificar recepción
+                        Confirmar recepción
                       </Button>
 
                       {status === 'reported' && (
@@ -664,9 +665,9 @@ export const PaymentAdminSection: React.FC<Props> = ({
                             setActiveParticipantId(item.id);
                             setActiveAction('request_revision');
                           }}
-                          style={{ minHeight: '30px', padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
+                          style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                         >
-                          Solicitar corrección
+                          Pedir corrección
                         </Button>
                       )}
                     </>
@@ -677,9 +678,9 @@ export const PaymentAdminSection: React.FC<Props> = ({
                         setActiveParticipantId(item.id);
                         setActiveAction('reverse');
                       }}
-                      style={{ minHeight: '30px', padding: '0.2rem 0.5rem', fontSize: 'var(--font-size-xs)' }}
+                      style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                     >
-                      Revertir verificación
+                      Corregir verificación
                     </Button>
                   )}
                 </div>
@@ -703,9 +704,9 @@ export const PaymentAdminSection: React.FC<Props> = ({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)' }}>
                       <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
-                        {activeAction === 'verify' && '✓ Confirmar recepción de pago:'}
-                        {activeAction === 'request_revision' && '⚠️ Solicitar corrección a la familia:'}
-                        {activeAction === 'reverse' && '↺ Revertir verificación:'}
+                        {activeAction === 'verify' && 'Confirmar recepción de pago:'}
+                        {activeAction === 'request_revision' && 'Pedir corrección a la familia:'}
+                        {activeAction === 'reverse' && 'Corregir verificación:'}
                       </span>
                     </div>
 
@@ -743,7 +744,7 @@ export const PaymentAdminSection: React.FC<Props> = ({
                         onChange={(e) => setInputReason(e.target.value)}
                         placeholder={
                           activeAction === 'request_revision'
-                            ? 'Ej: El comprobante adjunto es ilegible o el importe no coincide'
+                            ? 'Ej: El comprobante adjunto no es legible o el importe difiere'
                             : 'Ej: Se constató un error bancario o rechazo de transferencia'
                         }
                         required
@@ -764,8 +765,9 @@ export const PaymentAdminSection: React.FC<Props> = ({
                         onClick={() => {
                           setActiveParticipantId(null);
                           setActiveAction(null);
+                          setInputReason('');
                         }}
-                        style={{ minHeight: '38px', padding: '0.4rem 0.9rem', fontSize: 'var(--font-size-xs)' }}
+                        style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                       >
                         Cancelar
                       </Button>
@@ -773,7 +775,7 @@ export const PaymentAdminSection: React.FC<Props> = ({
                         variant="primary"
                         isLoading={loading}
                         onClick={() => handleExecuteAction(item.id)}
-                        style={{ minHeight: '38px', padding: '0.4rem 1.1rem', fontSize: 'var(--font-size-xs)' }}
+                        style={{ minHeight: 'var(--touch-target-min)', padding: '0.35rem 0.75rem', fontSize: 'var(--font-size-xs)' }}
                       >
                         Confirmar
                       </Button>

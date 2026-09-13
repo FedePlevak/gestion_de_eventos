@@ -71,8 +71,8 @@ export function DeleteEventSection({
     <>
       <div
         style={{
-          border: '1px solid #fecaca',
-          backgroundColor: '#fff5f5',
+          border: '1px solid var(--color-danger-border)',
+          backgroundColor: 'var(--color-danger-bg)',
           borderRadius: 'var(--radius-md)',
           padding: 'var(--spacing-4)',
           marginTop: 'var(--spacing-4)',
@@ -83,19 +83,19 @@ export function DeleteEventSection({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
           <div>
-            <h4 style={{ margin: 0, fontSize: 'var(--font-size-base)', fontWeight: 700, color: '#991b1b' }}>
-              Zona de Peligro: Eliminar este Evento
+            <h4 style={{ margin: 0, fontSize: 'var(--font-size-base)', fontWeight: 700, color: 'var(--color-danger-text)' }}>
+              Zona de riesgo: eliminar evento
             </h4>
-            <p style={{ margin: '0.25rem 0 0', fontSize: 'var(--font-size-xs)', color: '#7f1d1d' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: 'var(--font-size-xs)', color: 'var(--color-danger-text)' }}>
               Si este evento ya concluyó o fue creado por error, podés eliminarlo de forma definitiva.
             </p>
           </div>
           <Button
             variant="danger"
             onClick={handleOpenModal}
-            style={{ fontSize: 'var(--font-size-xs)', minHeight: '36px', backgroundColor: '#dc2626' }}
+            style={{ fontSize: 'var(--font-size-xs)', minHeight: 'var(--touch-target-min)' }}
           >
-            🗑️ Eliminar evento...
+            Eliminar evento...
           </Button>
         </div>
       </div>
@@ -103,10 +103,13 @@ export function DeleteEventSection({
       {/* Modal de Doble Verificación */}
       {isOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-event-modal-title"
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backgroundColor: 'rgba(23, 63, 53, 0.45)',
             backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
@@ -119,7 +122,7 @@ export function DeleteEventSection({
           <div
             style={{
               backgroundColor: 'var(--color-surface)',
-              border: '2px solid #ef4444',
+              border: '1px solid var(--color-danger-border)',
               borderRadius: 'var(--radius-lg)',
               maxWidth: '520px',
               width: '100%',
@@ -127,66 +130,55 @@ export function DeleteEventSection({
               display: 'flex',
               flexDirection: 'column',
               gap: 'var(--spacing-4)',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+              boxShadow: 'var(--shadow-md)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Encabezado */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-3)' }}>
-              <div
-                style={{
-                  fontSize: '2rem',
-                  lineHeight: 1,
-                  padding: '0.5rem',
-                  backgroundColor: '#fee2e2',
-                  borderRadius: 'var(--radius-md)',
-                }}
-              >
-                ⚠️
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 'var(--font-size-lg)', fontWeight: 800, color: '#991b1b' }}>
-                  ¿Eliminar este evento definitivamente?
-                </h3>
-                <p style={{ margin: '0.25rem 0 0', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
-                  Acción irreversible con doble verificación de seguridad
-                </p>
-              </div>
+            <div>
+              <h3 id="delete-event-modal-title" style={{ margin: 0, fontSize: 'var(--font-size-lg)', fontWeight: 800, color: 'var(--color-danger-text)' }}>
+                ¿Eliminar este evento definitivamente?
+              </h3>
+              <p style={{ margin: '0.25rem 0 0', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+                Acción irreversible con doble confirmación de seguridad
+              </p>
             </div>
 
             {/* Advertencias claras */}
             <div
               style={{
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fca5a5',
-                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--color-danger-bg)',
+                border: '1px solid var(--color-danger-border)',
+                borderRadius: 'var(--radius-md)',
                 padding: 'var(--spacing-3)',
                 fontSize: 'var(--font-size-xs)',
-                color: '#7f1d1d',
+                color: 'var(--color-danger-text)',
                 lineHeight: 1.5,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.35rem',
               }}
             >
-              <strong style={{ fontSize: 'var(--font-size-sm)', color: '#991b1b' }}>
+              <strong style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-danger-text)' }}>
                 Al confirmar la eliminación:
               </strong>
-              <div>• Se eliminarán permanentemente las <strong>{stageCount} etapas y consultas</strong> junto a todos sus votos registrados.</div>
+              <div>• Se eliminarán permanentemente las <strong>{stageCount} consultas</strong> junto a todos sus votos registrados.</div>
               <div>• Se darán de baja los accesos de las <strong>{participantCount} familias convocadas</strong> y sus enlaces únicos quedarán inhabilitados.</div>
               <div>• Se suprimirán todos los registros de aportes y tickets de soporte de este evento.</div>
               <div style={{ fontWeight: 700, marginTop: '0.25rem' }}>
-                🚨 Esta acción NO se puede deshacer ni recuperar.
+                Esta acción no se puede deshacer ni recuperar.
               </div>
             </div>
 
             {errorMessage && (
               <div
+                role="alert"
                 style={{
                   padding: 'var(--spacing-3)',
-                  backgroundColor: '#fee2e2',
-                  color: '#b91c1c',
-                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--color-danger-bg)',
+                  border: '1px solid var(--color-danger-border)',
+                  color: 'var(--color-danger-text)',
+                  borderRadius: 'var(--radius-md)',
                   fontSize: 'var(--font-size-xs)',
                   fontWeight: 600,
                 }}
@@ -206,7 +198,7 @@ export function DeleteEventSection({
                 color: 'var(--color-text-main)',
                 backgroundColor: 'var(--color-surface-subtle)',
                 padding: 'var(--spacing-3)',
-                borderRadius: 'var(--radius-sm)',
+                borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--color-border)',
               }}
             >
@@ -218,7 +210,7 @@ export function DeleteEventSection({
                 style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
               />
               <span>
-                <strong>Paso 1:</strong> He leído las advertencias y comprendo que se eliminará toda la información del evento y sus votaciones de forma permanente.
+                <strong>Paso 1:</strong> He leído las advertencias y comprendo que se eliminará toda la información del evento de forma permanente.
               </span>
             </label>
 
@@ -230,19 +222,15 @@ export function DeleteEventSection({
                 onChange={(e) => setTypedName(e.target.value)}
                 placeholder={`Escribí "${eventName}"`}
                 disabled={isDeleting}
-                style={{
-                  borderColor: isNameMatch ? '#16a34a' : undefined,
-                  backgroundColor: isNameMatch ? '#f0fdf4' : undefined,
-                }}
               />
               {typedName && !isNameMatch && (
-                <span style={{ fontSize: '11px', color: '#dc2626' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-danger-text)' }}>
                   El nombre no coincide exactamente.
                 </span>
               )}
               {isNameMatch && (
-                <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600 }}>
-                  ✓ Nombre validado correctamente.
+                <span style={{ fontSize: '11px', color: 'var(--color-success-text)', fontWeight: 600 }}>
+                  Nombre validado correctamente.
                 </span>
               )}
             </div>
@@ -253,7 +241,7 @@ export function DeleteEventSection({
                 variant="outline"
                 onClick={handleCloseModal}
                 disabled={isDeleting}
-                style={{ fontSize: 'var(--font-size-xs)' }}
+                style={{ minHeight: 'var(--touch-target-min)', fontSize: 'var(--font-size-xs)' }}
               >
                 Cancelar
               </Button>
@@ -262,13 +250,9 @@ export function DeleteEventSection({
                 onClick={handleDelete}
                 disabled={!canConfirm}
                 isLoading={isDeleting}
-                style={{
-                  fontSize: 'var(--font-size-xs)',
-                  backgroundColor: canConfirm ? '#dc2626' : '#9ca3af',
-                  cursor: canConfirm ? 'pointer' : 'not-allowed',
-                }}
+                style={{ minHeight: 'var(--touch-target-min)', fontSize: 'var(--font-size-xs)' }}
               >
-                {isDeleting ? 'Eliminando definitivamente...' : 'Sí, eliminar este evento'}
+                {isDeleting ? 'Eliminando...' : 'Sí, eliminar este evento'}
               </Button>
             </div>
           </div>

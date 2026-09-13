@@ -112,26 +112,28 @@ export function OrganizerTeamSection({ eventId }: OrganizerTeamSectionProps) {
 
   return (
     <Card
-      title="Equipo de Organizadores"
-      subtitle="Usuarios con acceso administrativo y capacidad de gestión para este evento"
+      title="Equipo de organizadores"
+      subtitle="Personas con acceso administrativo para este evento"
       action={
         <Button
           variant={isExpanded ? 'secondary' : 'outline'}
           onClick={() => setIsExpanded(!isExpanded)}
-          style={{ minHeight: '36px', fontSize: 'var(--font-size-xs)' }}
+          style={{ minHeight: 'var(--touch-target-min)', fontSize: 'var(--font-size-xs)' }}
         >
-          {isExpanded ? 'Cerrar' : '+ Agregar Organizador'}
+          {isExpanded ? 'Cerrar' : '+ Agregar organizador'}
         </Button>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
         {feedback && (
           <div
+            role="status"
             style={{
               padding: 'var(--spacing-3)',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: feedback.type === 'success' ? 'var(--color-success-surface, #e8f5e9)' : 'var(--color-error-surface, #ffebee)',
-              color: feedback.type === 'success' ? 'var(--color-success-text, #2e7d32)' : 'var(--color-error-text, #c62828)',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: feedback.type === 'success' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+              border: `1px solid ${feedback.type === 'success' ? 'var(--color-success-border)' : 'var(--color-danger-border)'}`,
+              color: feedback.type === 'success' ? 'var(--color-success-text)' : 'var(--color-danger-text)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: 600,
             }}
@@ -154,7 +156,7 @@ export function OrganizerTeamSection({ eventId }: OrganizerTeamSectionProps) {
               gap: 'var(--spacing-3)',
             }}
           >
-            <strong style={{ fontSize: 'var(--font-size-sm)' }}>
+            <strong style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
               Invitar o asignar un nuevo organizador al evento
             </strong>
             <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
@@ -171,18 +173,18 @@ export function OrganizerTeamSection({ eventId }: OrganizerTeamSectionProps) {
             />
 
             <Input
-              label="Nombre o Apellido (opcional)"
+              label="Nombre o apellido (opcional)"
               placeholder="Ej: Laura Méndez"
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)' }}>
-              <Button type="button" variant="outline" onClick={() => setIsExpanded(false)} style={{ minHeight: '36px' }}>
+              <Button type="button" variant="outline" onClick={() => setIsExpanded(false)} style={{ minHeight: 'var(--touch-target-min)' }}>
                 Cancelar
               </Button>
-              <Button type="submit" variant="primary" isLoading={addLoading} style={{ minHeight: '36px' }}>
-                Conceder Acceso
+              <Button type="submit" variant="primary" isLoading={addLoading} style={{ minHeight: 'var(--touch-target-min)' }}>
+                Conceder acceso
               </Button>
             </div>
           </form>
@@ -215,20 +217,20 @@ export function OrganizerTeamSection({ eventId }: OrganizerTeamSectionProps) {
                   <div>
                     <strong style={{ fontSize: 'var(--font-size-sm)' }}>{org.name || org.email}</strong>
                     <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', display: 'block' }}>
-                      ✉️ {org.email}
+                      {org.email}
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
                     <Badge variant={isActive ? 'success' : 'neutral'}>
-                      {isActive ? 'Organizador Activo' : 'Acceso Revocado'}
+                      {isActive ? 'Activo' : 'Revocado'}
                     </Badge>
 
                     {isActive && organizers.filter((o) => o.status === 'active').length > 1 && (
                       <Button
                         variant="outline"
                         onClick={() => handleRevoke(org.id, org.email)}
-                        style={{ fontSize: 'var(--font-size-xs)', minHeight: '28px', padding: '0.2rem 0.5rem', color: 'var(--color-error-text, #c62828)' }}
+                        style={{ fontSize: 'var(--font-size-xs)', minHeight: 'var(--touch-target-min)', padding: '0.2rem 0.6rem', color: 'var(--color-danger-text)' }}
                       >
                         Revocar
                       </Button>
