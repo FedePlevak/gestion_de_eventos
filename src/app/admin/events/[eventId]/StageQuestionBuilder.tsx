@@ -12,21 +12,102 @@ interface Props {
   isLocked?: boolean;
 }
 
+export function getTitlePlaceholder(type: StageQuestionType): string {
+  switch (type) {
+    case 'yes_no':
+      return 'Ej: ¿Confirmás tu asistencia al evento?';
+    case 'integer_quantity':
+      return 'Ej: ¿Cuántos adultos asistirán? (o niños, acompañantes)';
+    case 'single_choice':
+      return 'Ej: ¿Qué opción de menú o turno preferís?';
+    case 'multiple_choice':
+      return 'Ej: ¿En qué actividades de la kermesse te gustaría participar?';
+    case 'open_text':
+      return 'Ej: Restricciones alimentarias, alergias o sugerencias';
+    case 'info':
+      return 'Ej: Horario de llegada, mapa de acceso y recomendaciones';
+    default:
+      return 'Ej: Escribí el título o consigna de la pregunta acá';
+  }
+}
+
+export function getDescriptionPlaceholder(type: StageQuestionType): string {
+  switch (type) {
+    case 'yes_no':
+      return 'Ej: Responder antes del viernes para confirmar cupo (opcional)';
+    case 'integer_quantity':
+      return 'Ej: Contar solo integrantes de la familia conviviente (opcional)';
+    case 'single_choice':
+      return 'Ej: Elegí una única alternativa (opcional)';
+    case 'multiple_choice':
+      return 'Ej: Podés marcar más de una alternativa (opcional)';
+    case 'open_text':
+      return 'Ej: Dejanos cualquier comentario relevante para la organización (opcional)';
+    case 'info':
+      return 'Ej: Rogamos llegar 15 minutos antes para acreditación (opcional)';
+    default:
+      return 'Ej: Texto explicativo o aclaración (opcional)';
+  }
+}
+
+export function getOptionPlaceholder(type: StageQuestionType, optIdx: number): string {
+  if (type === 'single_choice') {
+    if (optIdx === 0) return 'Ej: Menú Tradicional';
+    if (optIdx === 1) return 'Ej: Menú Vegetariano / Celíaco';
+    return `Ej: Opción ${optIdx + 1}`;
+  }
+  if (type === 'multiple_choice') {
+    if (optIdx === 0) return 'Ej: Decoración del salón';
+    if (optIdx === 1) return 'Ej: Puesto de buffet y bebidas';
+    if (optIdx === 2) return 'Ej: Juegos y kermesse';
+    return `Ej: Alternativa ${optIdx + 1}`;
+  }
+  return `Ej: Opción ${optIdx + 1}`;
+}
+
+export function getTypeLabel(type: StageQuestionType): string {
+  switch (type) {
+    case 'yes_no':
+      return 'Sí / No';
+    case 'integer_quantity':
+      return 'Cantidad numérica';
+    case 'single_choice':
+      return 'Opción única';
+    case 'multiple_choice':
+      return 'Opción múltiple';
+    case 'open_text':
+      return 'Texto libre';
+    case 'info':
+      return 'Informativo';
+    default:
+      return type;
+  }
+}
+
+export function isQuestionComplete(q: StageQuestion): boolean {
+  if (!q.title.trim()) return false;
+  if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+    if (!q.options || q.options.length < 2) return false;
+    if (q.options.some((opt) => !opt.label.trim())) return false;
+  }
+  return true;
+}
+
 export function getDefaultNewQuestion(type: StageQuestionType): StageQuestion {
   const id = `q_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   switch (type) {
     case 'yes_no':
       return {
         id,
-        title: '¿Confirmás tu asistencia al evento?',
+        title: '',
         type: 'yes_no',
         required: true,
       };
     case 'integer_quantity':
       return {
         id,
-        title: '¿Cuántas personas asistirán?',
-        description: 'Indicá la cantidad correspondiente',
+        title: '',
+        description: '',
         type: 'integer_quantity',
         required: true,
         minQuantity: 0,
@@ -35,31 +116,31 @@ export function getDefaultNewQuestion(type: StageQuestionType): StageQuestion {
     case 'single_choice':
       return {
         id,
-        title: 'Seleccioná una opción',
+        title: '',
         type: 'single_choice',
         required: true,
         options: [
-          { id: `opt_${Date.now()}_1`, label: 'Opción 1' },
-          { id: `opt_${Date.now()}_2`, label: 'Opción 2' },
+          { id: `opt_${Date.now()}_1`, label: '' },
+          { id: `opt_${Date.now()}_2`, label: '' },
         ],
       };
     case 'multiple_choice':
       return {
         id,
-        title: 'Seleccioná las alternativas deseadas',
-        description: 'Podés marcar más de una alternativa',
+        title: '',
+        description: '',
         type: 'multiple_choice',
         required: false,
         options: [
-          { id: `opt_${Date.now()}_1`, label: 'Alternativa A' },
-          { id: `opt_${Date.now()}_2`, label: 'Alternativa B' },
+          { id: `opt_${Date.now()}_1`, label: '' },
+          { id: `opt_${Date.now()}_2`, label: '' },
         ],
       };
     case 'open_text':
       return {
         id,
-        title: 'Restricciones alimentarias u observaciones',
-        description: 'Dejanos cualquier comentario relevante para la organización',
+        title: '',
+        description: '',
         type: 'open_text',
         required: false,
         placeholder: 'Escribí tus aclaraciones acá…',
@@ -67,15 +148,15 @@ export function getDefaultNewQuestion(type: StageQuestionType): StageQuestion {
     case 'info':
       return {
         id,
-        title: 'Información relevante para las familias',
-        description: 'Texto informativo o instrucciones para los asistentes',
+        title: '',
+        description: '',
         type: 'info',
         required: false,
       };
     default:
       return {
         id,
-        title: 'Nueva pregunta',
+        title: '',
         type: 'open_text',
         required: false,
       };
@@ -137,7 +218,7 @@ export const StageQuestionBuilder: React.FC<Props> = ({
     const currentOptions = q.options || [];
     const newOpt = {
       id: `opt_${Date.now()}_${currentOptions.length + 1}`,
-      label: `Opción ${currentOptions.length + 1}`,
+      label: '',
     };
     handleUpdateQuestion(qIndex, { options: [...currentOptions, newOpt] });
   };
@@ -162,25 +243,6 @@ export const StageQuestionBuilder: React.FC<Props> = ({
     });
   };
 
-  const getTypeLabel = (type: StageQuestionType): string => {
-    switch (type) {
-      case 'yes_no':
-        return 'Sí / No';
-      case 'integer_quantity':
-        return 'Cantidad numérica';
-      case 'single_choice':
-        return 'Opción única';
-      case 'multiple_choice':
-        return 'Opción múltiple';
-      case 'open_text':
-        return 'Texto libre';
-      case 'info':
-        return 'Informativo';
-      default:
-        return type;
-    }
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
@@ -199,30 +261,70 @@ export const StageQuestionBuilder: React.FC<Props> = ({
       {questions.map((q, qIndex) => {
         // Preguntas anteriores que pueden usarse como condición
         const previousQuestions = questions.slice(0, qIndex).filter((prev) => prev.type !== 'info');
+        const complete = isQuestionComplete(q);
 
         return (
           <div
             key={q.id}
             style={{
               padding: 'var(--spacing-3)',
-              backgroundColor: 'var(--color-surface)',
+              backgroundColor: !complete ? 'rgba(255, 242, 217, 0.25)' : 'var(--color-surface)',
               borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--color-border)',
+              border: !complete
+                ? '1.5px dashed var(--color-warning-border, #D0AA63)'
+                : '1px solid var(--color-border)',
               display: 'flex',
               flexDirection: 'column',
               gap: 'var(--spacing-3)',
               boxShadow: 'var(--shadow-xs)',
+              transition: 'all 0.2s ease-in-out',
             }}
           >
             {/* Encabezado del bloque */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 800, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-main)' }}>
                   #{qIndex + 1}
                 </span>
                 <Badge variant={q.type === 'yes_no' ? 'info' : q.type === 'integer_quantity' ? 'warning' : 'neutral'}>
                   {getTypeLabel(q.type)}
                 </Badge>
+
+                {!complete ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-warning-text, #795014)',
+                      backgroundColor: 'var(--color-warning-bg, #FFF2D9)',
+                      border: '1px solid var(--color-warning-border, #D0AA63)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    ⚠️ Sin completar
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-success-text, #24543A)',
+                      backgroundColor: 'var(--color-success-bg, #EAF4EC)',
+                      border: '1px solid var(--color-success-border, #9EBFA7)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    ✓ Listo
+                  </span>
+                )}
               </div>
 
               {!isLocked && (
@@ -286,7 +388,15 @@ export const StageQuestionBuilder: React.FC<Props> = ({
               label="Título o pregunta"
               value={q.title}
               onChange={(e) => handleUpdateQuestion(qIndex, { title: e.target.value })}
-              placeholder="Ej: ¿Asistirán al evento?"
+              placeholder={getTitlePlaceholder(q.type)}
+              helperText={
+                !q.title.trim()
+                  ? '⚠️ Escribí la pregunta acá (el texto en gris es solo un ejemplo)'
+                  : undefined
+              }
+              style={{
+                border: !q.title.trim() ? '1.5px dashed var(--color-warning-border, #D0AA63)' : undefined,
+              }}
               required
             />
 
@@ -295,7 +405,7 @@ export const StageQuestionBuilder: React.FC<Props> = ({
               label="Aclaración o texto de ayuda (opcional)"
               value={q.description || ''}
               onChange={(e) => handleUpdateQuestion(qIndex, { description: e.target.value })}
-              placeholder="Ej: Mayores de 12 años"
+              placeholder={getDescriptionPlaceholder(q.type)}
             />
 
             {/* Controles específicos del tipo */}
@@ -327,9 +437,16 @@ export const StageQuestionBuilder: React.FC<Props> = ({
                   border: '1px solid var(--color-border)',
                 }}
               >
-                <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
-                  Opciones disponibles:
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
+                    Opciones disponibles:
+                  </span>
+                  {(!q.options || q.options.some((o) => !o.label.trim())) && (
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning-text)', fontWeight: 600 }}>
+                      ⚠️ Opciones pendientes de completar
+                    </span>
+                  )}
+                </div>
                 {(q.options || []).map((opt, optIdx) => (
                   <div key={opt.id} style={{ display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
                     <Input
@@ -337,7 +454,11 @@ export const StageQuestionBuilder: React.FC<Props> = ({
                       value={opt.label}
                       disabled={isLocked}
                       onChange={(e) => handleUpdateOption(qIndex, optIdx, e.target.value)}
-                      placeholder={`Opción ${optIdx + 1}`}
+                      placeholder={getOptionPlaceholder(q.type, optIdx)}
+                      helperText={!opt.label.trim() ? '⚠️ Escribí la opción (el texto en gris es un ejemplo)' : undefined}
+                      style={{
+                        border: !opt.label.trim() ? '1.5px dashed var(--color-warning-border, #D0AA63)' : undefined,
+                      }}
                     />
                     {!isLocked && (q.options?.length ?? 0) > 2 && (
                       <button

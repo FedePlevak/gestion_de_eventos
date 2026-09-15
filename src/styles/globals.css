@@ -34,6 +34,15 @@ button, input, select, textarea {
   color: inherit;
 }
 
+/* Placeholders de ejemplo: visualmente diferenciados del texto ingresado */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-subtle, #52645D);
+  opacity: 0.65;
+  font-style: italic;
+  font-weight: 400;
+}
+
 button {
   cursor: pointer;
   border: none;

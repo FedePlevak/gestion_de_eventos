@@ -7,7 +7,7 @@ import { Input } from '@/components/Input';
 import { Badge } from '@/components/Badge';
 import { StageCountdown } from '@/components/StageCountdown';
 
-import { StageQuestionBuilder, getDefaultNewQuestion } from './StageQuestionBuilder';
+import { StageQuestionBuilder, getDefaultNewQuestion, getTypeLabel } from './StageQuestionBuilder';
 import { StageQuestion } from '@/modules/stages/types';
 
 export interface StageSummary {
@@ -129,7 +129,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages, on
     setCreateError(null);
 
     if (!createTitle.trim()) {
-      setCreateError('El título general de la consulta es obligatorio.');
+      setCreateError('El título principal de la consulta está sin completar. Por favor escribí un título.');
       return;
     }
 
@@ -138,14 +138,23 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages, on
       return;
     }
 
-    for (const q of createQuestions) {
+    for (let i = 0; i < createQuestions.length; i++) {
+      const q = createQuestions[i];
       if (!q.title.trim()) {
-        setCreateError('Todas las preguntas o campos deben tener un título.');
+        setCreateError(`El campo #${i + 1} (${getTypeLabel(q.type)}) está sin completar. Por favor escribí su pregunta o consigna.`);
         return;
       }
-      if ((q.type === 'single_choice' || q.type === 'multiple_choice') && (!q.options || q.options.length < 2)) {
-        setCreateError(`La pregunta "${q.title}" debe tener al menos 2 opciones.`);
-        return;
+      if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+        if (!q.options || q.options.length < 2) {
+          setCreateError(`El campo #${i + 1} debe tener al menos 2 opciones.`);
+          return;
+        }
+        for (let j = 0; j < q.options.length; j++) {
+          if (!q.options[j].label.trim()) {
+            setCreateError(`En el campo #${i + 1} (${q.title}), la opción #${j + 1} está sin completar.`);
+            return;
+          }
+        }
       }
     }
 
@@ -278,16 +287,26 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages, on
           setEditLoading(false);
           return;
         }
-        for (const q of editQuestions) {
+        for (let i = 0; i < editQuestions.length; i++) {
+          const q = editQuestions[i];
           if (!q.title.trim()) {
-            setEditError('Todas las preguntas o campos deben tener un título.');
+            setEditError(`El campo #${i + 1} (${getTypeLabel(q.type)}) está sin completar.`);
             setEditLoading(false);
             return;
           }
-          if ((q.type === 'single_choice' || q.type === 'multiple_choice') && (!q.options || q.options.length < 2)) {
-            setEditError(`La pregunta "${q.title}" debe tener al menos 2 opciones.`);
-            setEditLoading(false);
-            return;
+          if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+            if (!q.options || q.options.length < 2) {
+              setEditError(`El campo #${i + 1} debe tener al menos 2 opciones.`);
+              setEditLoading(false);
+              return;
+            }
+            for (let j = 0; j < q.options.length; j++) {
+              if (!q.options[j].label.trim()) {
+                setEditError(`En el campo #${i + 1} (${q.title}), la opción #${j + 1} está sin completar.`);
+                setEditLoading(false);
+                return;
+              }
+            }
           }
         }
         payload.questions = editQuestions;
@@ -532,15 +551,23 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages, on
 
             <Input
               label="Título o pregunta principal de la etapa"
-              placeholder="Ej: Necesitamos confirmar una fecha para el evento"
+              placeholder="Ej: Confirmación de asistencia y detalle de acompañantes"
               value={createTitle}
               onChange={(e) => setCreateTitle(e.target.value)}
+              helperText={
+                !createTitle.trim()
+                  ? '⚠️ Campo obligatorio — El texto en gris es solo un ejemplo'
+                  : undefined
+              }
+              style={{
+                border: !createTitle.trim() ? '1.5px dashed var(--color-warning-border, #D0AA63)' : undefined,
+              }}
               required
             />
 
             <Input
               label="Descripción o contexto adicional (opcional)"
-              placeholder="Ej: Indiquen las fechas en las que su familia tiene disponibilidad"
+              placeholder="Ej: Indiquen las fechas o disponibilidad de la familia para coordinar el evento"
               value={createDescription}
               onChange={(e) => setCreateDescription(e.target.value)}
             />
@@ -876,13 +903,23 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages, on
                     label="Título de la consulta"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Ej: Confirmación de asistencia"
+                    helperText={
+                      !editTitle.trim()
+                        ? '⚠️ Campo obligatorio — Escribí el título de la consulta'
+                        : undefined
+                    }
+                    style={{
+                      border: !editTitle.trim() ? '1.5px dashed var(--color-warning-border, #D0AA63)' : undefined,
+                    }}
                     required
                   />
 
                   <Input
-                    label="Descripción o contexto"
+                    label="Descripción o contexto (opcional)"
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
+                    placeholder="Ej: Aclaraciones generales para las familias"
                   />
 
                   <Input

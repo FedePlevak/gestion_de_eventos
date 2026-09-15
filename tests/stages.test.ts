@@ -9,6 +9,13 @@ import {
   closeStageAdmin,
   deleteStageAdmin,
 } from '../src/modules/stages/service';
+import {
+  getDefaultNewQuestion,
+  getTitlePlaceholder,
+  getDescriptionPlaceholder,
+  getOptionPlaceholder,
+  isQuestionComplete,
+} from '../src/app/admin/events/[eventId]/StageQuestionBuilder';
 import { FamilySessionContext, OrganizerSessionContext } from '../src/modules/access/types';
 
 // Mock de almacenamiento en memoria para Firestore
@@ -571,6 +578,55 @@ describe('Incremento 2: Criterios de Aceptación de Etapas y Respuestas', () => 
       await expect(
         deleteStageAdmin(organizer, 'event_1', 'stage_inexistente')
       ).rejects.toThrow('La consulta que querés eliminar no existe.');
+    });
+  });
+
+  describe('Criterio E17: Etapas sin autocompletar, placeholders de ejemplo y estado sin completar', () => {
+    it('inicializa nuevas preguntas con título vacío para que no se completen automáticamente', () => {
+      const types = ['yes_no', 'integer_quantity', 'single_choice', 'multiple_choice', 'open_text', 'info'] as const;
+
+      for (const t of types) {
+        const q = getDefaultNewQuestion(t);
+        expect(q.title).toBe('');
+        if (t === 'integer_quantity' || t === 'multiple_choice' || t === 'open_text' || t === 'info') {
+          expect(q.description).toBe('');
+        }
+        if (t === 'single_choice' || t === 'multiple_choice') {
+          expect(q.options).toBeDefined();
+          expect(q.options?.length).toBeGreaterThanOrEqual(2);
+          for (const opt of q.options!) {
+            expect(opt.label).toBe('');
+          }
+        }
+      }
+    });
+
+    it('provee placeholders descriptivos de ejemplo para cada tipo de pregunta y opción', () => {
+      expect(getTitlePlaceholder('yes_no')).toContain('¿Confirmás');
+      expect(getTitlePlaceholder('integer_quantity')).toContain('adultos');
+      expect(getTitlePlaceholder('single_choice')).toContain('menú');
+      expect(getDescriptionPlaceholder('yes_no')).toContain('Responder');
+      expect(getOptionPlaceholder('single_choice', 0)).toContain('Menú Tradicional');
+      expect(getOptionPlaceholder('single_choice', 1)).toContain('Vegetariano');
+    });
+
+    it('identifica correctamente cuándo una pregunta está sin completar y cuándo está lista', () => {
+      const qEmpty = getDefaultNewQuestion('yes_no');
+      expect(isQuestionComplete(qEmpty)).toBe(false);
+
+      const qWithTitle = { ...qEmpty, title: '¿Asistirá la familia?' };
+      expect(isQuestionComplete(qWithTitle)).toBe(true);
+
+      const qChoiceEmpty = getDefaultNewQuestion('single_choice');
+      qChoiceEmpty.title = 'Plato principal';
+      // Las opciones tienen label vacío
+      expect(isQuestionComplete(qChoiceEmpty)).toBe(false);
+
+      qChoiceEmpty.options = [
+        { id: 'opt_1', label: 'Carne' },
+        { id: 'opt_2', label: 'Pasta' },
+      ];
+      expect(isQuestionComplete(qChoiceEmpty)).toBe(true);
     });
   });
 });
