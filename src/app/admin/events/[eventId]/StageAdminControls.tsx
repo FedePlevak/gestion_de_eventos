@@ -30,9 +30,10 @@ export interface StageSummary {
 interface Props {
   eventId: string;
   initialStages: StageSummary[];
+  onStageDeleted?: (stageId: string) => void;
 }
 
-export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) => {
+export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages, onStageDeleted }) => {
   const [stages, setStages] = useState<StageSummary[]>(
     [...initialStages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   );
@@ -42,6 +43,11 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
   const [newDeadline, setNewDeadline] = useState('');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Estados para eliminación de consulta
+  const [stageToDelete, setStageToDelete] = useState<StageSummary | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Estados para creación de nueva etapa
   const [isCreating, setIsCreating] = useState(false);
@@ -446,6 +452,31 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     }
   };
 
+  const handleConfirmDeleteStage = async () => {
+    if (!stageToDelete) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch(
+        `/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageToDelete.id)}`,
+        { method: 'DELETE' }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar la consulta.');
+
+      setStages((prev) => prev.filter((s) => s.id !== stageToDelete.id));
+      if (onStageDeleted) onStageDeleted(stageToDelete.id);
+      setFeedback(`✓ Consulta "${stageToDelete.title}" eliminada correctamente.`);
+      setTimeout(() => setFeedback(null), 5000);
+      setStageToDelete(null);
+    } catch (err: any) {
+      setDeleteError(err.message || 'Error al eliminar la consulta.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
       {/* Botón principal para abrir formulario de creación */}
@@ -775,7 +806,6 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                   Agregar aclaración
                 </Button>
 
-                {/* 7. Publicar / Ocultar Resultados Consolidados */}
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -790,6 +820,22 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                   }}
                 >
                   Publicar resultados
+                </Button>
+
+                {/* 8. Eliminar Consulta */}
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setStageToDelete(stage);
+                  }}
+                  style={{
+                    minHeight: 'var(--touch-target-min)',
+                    padding: '0.35rem 0.75rem',
+                    fontSize: 'var(--font-size-xs)',
+                    marginLeft: 'auto',
+                  }}
+                >
+                  🗑️ Eliminar
                 </Button>
               </div>
 
@@ -1357,6 +1403,123 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
           Gestionar Etapa de Cuota ↓
         </a>
       </div>
+
+      {/* Modal de confirmación para eliminar consulta */}
+      {stageToDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-stage-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: 'var(--spacing-4)',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              borderRadius: 'var(--radius-lg)',
+              maxWidth: '480px',
+              width: '100%',
+              padding: 'var(--spacing-5)',
+              boxShadow: 'var(--shadow-lg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--spacing-4)',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
+              <h3
+                id="delete-stage-title"
+                style={{
+                  margin: 0,
+                  fontSize: 'var(--font-size-lg)',
+                  fontWeight: 700,
+                  color: 'var(--color-danger-text)',
+                }}
+              >
+                ¿Eliminar consulta?
+              </h3>
+              <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-main)' }}>
+                Estás a punto de eliminar <strong>"{stageToDelete.title}"</strong>. Esta acción no se puede deshacer.
+              </p>
+            </div>
+
+            {stageToDelete.responseCount > 0 ? (
+              <div
+                style={{
+                  backgroundColor: 'var(--color-danger-bg)',
+                  border: '1px solid var(--color-danger-border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--spacing-3)',
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-danger-text)',
+                  fontWeight: 600,
+                  lineHeight: 'var(--line-height-normal)',
+                }}
+              >
+                ⚠️ <strong>Atención crítica:</strong> Esta consulta ya cuenta con{' '}
+                <strong>{stageToDelete.responseCount} respuesta(s)</strong> de familias. Si la eliminás, se perderán todas las respuestas y el historial de votos de esta etapa.
+              </div>
+            ) : (
+              <div
+                style={{
+                  backgroundColor: 'var(--color-surface-subtle)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--spacing-3)',
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-subtle)',
+                  lineHeight: 'var(--line-height-normal)',
+                }}
+              >
+                Esta consulta aún no tiene respuestas de familias. Podés eliminarla con total tranquilidad si fue creada por error.
+              </div>
+            )}
+
+            {deleteError && (
+              <div
+                role="alert"
+                style={{
+                  padding: 'var(--spacing-2) var(--spacing-3)',
+                  backgroundColor: 'var(--color-danger-bg)',
+                  color: 'var(--color-danger-text)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 600,
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 'var(--spacing-2)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setStageToDelete(null);
+                  setDeleteError(null);
+                }}
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleConfirmDeleteStage}
+                isLoading={deleteLoading}
+              >
+                Sí, eliminar consulta
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

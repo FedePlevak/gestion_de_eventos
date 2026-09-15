@@ -777,3 +777,54 @@ export async function reopenStageAdmin(
     details: { reason, newDeadlineAt },
   });
 }
+
+/**
+ * Elimina una consulta (etapa) del evento de forma segura.
+ */
+export async function deleteStageAdmin(
+  organizer: OrganizerSessionContext,
+  eventId: string,
+  stageId: string,
+  reason?: string
+): Promise<{ deletedTitle: string }> {
+  await validateOrganizerEventAccess(organizer, eventId, organizer.workspaceId);
+
+  const db = getAdminDb();
+  const stageRef = db
+    .collection('workspaces')
+    .doc(organizer.workspaceId)
+    .collection('events')
+    .doc(eventId)
+    .collection('stages')
+    .doc(stageId);
+
+  const stageSnap = await stageRef.get();
+  if (!stageSnap.exists) {
+    throw new NotFoundError('La consulta que querés eliminar no existe.');
+  }
+
+  const stageData = stageSnap.data() as StageModel;
+  const stageTitle = stageData.title || 'Consulta';
+
+  // Eliminar documento principal de la etapa
+  await stageRef.delete();
+
+  await recordAuditEvent({
+    workspaceId: organizer.workspaceId,
+    eventId,
+    actor: {
+      type: 'organizer',
+      id: organizer.organizerId,
+      email: organizer.email,
+    },
+    action: 'STAGE_DELETED',
+    targetType: 'stage',
+    targetId: stageId,
+    details: {
+      title: stageTitle,
+      reason: reason || 'Eliminada por el comité organizador',
+    },
+  });
+
+  return { deletedTitle: stageTitle };
+}

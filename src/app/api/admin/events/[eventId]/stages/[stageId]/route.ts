@@ -5,6 +5,7 @@ import {
   closeStageAdmin,
   reopenStageAdmin,
   addClarificationAdmin,
+  deleteStageAdmin,
 } from '@/modules/stages/service';
 import { getAdminDb } from '@/server/firebase-admin';
 import { AppError, NotFoundError } from '@/server/errors';
@@ -372,3 +373,34 @@ export async function POST(
     return NextResponse.json({ error: 'Error al procesar la acción.' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { eventId: string; stageId: string } }
+) {
+  try {
+    const organizer = await getOrganizerContextFromRequest(request);
+    await validateOrganizerEventAccess(organizer, params.eventId, organizer.workspaceId);
+
+    const body = await request.json().catch(() => ({}));
+    const reason = body?.reason;
+
+    const result = await deleteStageAdmin(organizer, params.eventId, params.stageId, reason);
+
+    return NextResponse.json({
+      success: true,
+      deletedTitle: result.deletedTitle,
+      message: `La consulta "${result.deletedTitle}" fue eliminada correctamente.`,
+    });
+  } catch (error: any) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.userMessage, code: error.code },
+        { status: error.statusCode }
+      );
+    }
+    console.error('Error al eliminar etapa:', error);
+    return NextResponse.json({ error: 'Error interno al eliminar la consulta.' }, { status: 500 });
+  }
+}
+

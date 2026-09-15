@@ -66,6 +66,36 @@ export const OrganizerEventTabs: React.FC<Props> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [eventFeedback, setEventFeedback] = useState<string | null>(null);
 
+  // Estados locales reactivos para participantes y etapas
+  const [currentParticipants, setCurrentParticipants] = useState<any[]>(participants);
+  const [currentStages, setCurrentStages] = useState<any[]>(stages);
+
+  useEffect(() => {
+    setCurrentParticipants(participants);
+  }, [participants]);
+
+  useEffect(() => {
+    setCurrentStages(stages);
+  }, [stages]);
+
+  const handleParticipantDeleted = (participantId: string) => {
+    setCurrentParticipants((prev) => prev.filter((p) => p.id !== participantId));
+    setEventFeedback('✓ Familia eliminada correctamente del evento.');
+    setTimeout(() => setEventFeedback(null), 5000);
+  };
+
+  const handleParticipantUpdated = (updatedParticipant: any) => {
+    setCurrentParticipants((prev) =>
+      prev.map((p) => (p.id === updatedParticipant.id ? { ...p, ...updatedParticipant } : p))
+    );
+  };
+
+  const handleStageDeleted = (stageId: string) => {
+    setCurrentStages((prev) => prev.filter((s) => s.id !== stageId));
+    setEventFeedback('✓ Consulta eliminada correctamente del evento.');
+    setTimeout(() => setEventFeedback(null), 5000);
+  };
+
   // Sincronizar tab con hash de la URL (#resumen, #etapas, #pagos, etc.)
   useEffect(() => {
     const handleHash = () => {
@@ -89,9 +119,9 @@ export const OrganizerEventTabs: React.FC<Props> = ({
   };
 
   // Métricas calculadas para el dashboard
-  const activeStages = useMemo(() => stages.filter((s) => s.visibility === 'visible' || s.visibility === 'public'), [stages]);
-  const totalResponses = useMemo(() => stages.reduce((acc, s) => acc + (s.responseCount || 0), 0), [stages]);
-  const totalViews = useMemo(() => stages.reduce((acc, s) => acc + (s.readCount || 0), 0), [stages]);
+  const activeStages = useMemo(() => currentStages.filter((s) => s.visibility === 'visible' || s.visibility === 'public'), [currentStages]);
+  const totalResponses = useMemo(() => currentStages.reduce((acc, s) => acc + (s.responseCount || 0), 0), [currentStages]);
+  const totalViews = useMemo(() => currentStages.reduce((acc, s) => acc + (s.readCount || 0), 0), [currentStages]);
 
   const openTickets = useMemo(
     () => initialTickets.filter((t) => t.status !== 'resolved'),
@@ -178,7 +208,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
 
         <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap', alignItems: 'center' }}>
           <Badge variant="success">Activo</Badge>
-          <Badge variant="info">{participants.length} Familias convocadas</Badge>
+          <Badge variant="info">{currentParticipants.length} Familias convocadas</Badge>
           {currentEventDate ? (
             <Badge variant="neutral">
               📅 {new Date(currentEventDate).toLocaleDateString('es-UY', { dateStyle: 'medium' })}
@@ -221,18 +251,18 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             onClick={() => changeTab('resumen')}
             style={{
               minHeight: 'var(--touch-target-min)',
-              padding: '0.5rem 0.9rem',
+              padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'resumen' ? 700 : 600,
               backgroundColor: activeTab === 'resumen' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'resumen' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
-              border: activeTab === 'resumen' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: activeTab === 'resumen' ? '#ffffff' : 'var(--color-text-main)',
+              border: activeTab === 'resumen' ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              boxShadow: activeTab === 'resumen' ? 'var(--shadow-sm)' : 'none',
+              boxShadow: activeTab === 'resumen' ? '0 2px 8px rgba(23, 63, 53, 0.25)' : 'none',
               transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
@@ -247,18 +277,18 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             onClick={() => changeTab('etapas')}
             style={{
               minHeight: 'var(--touch-target-min)',
-              padding: '0.5rem 0.9rem',
+              padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'etapas' ? 700 : 600,
               backgroundColor: activeTab === 'etapas' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'etapas' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
-              border: activeTab === 'etapas' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: activeTab === 'etapas' ? '#ffffff' : 'var(--color-text-main)',
+              border: activeTab === 'etapas' ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              boxShadow: activeTab === 'etapas' ? 'var(--shadow-sm)' : 'none',
+              boxShadow: activeTab === 'etapas' ? '0 2px 8px rgba(23, 63, 53, 0.25)' : 'none',
               transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
@@ -267,10 +297,12 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               style={{
                 fontVariantNumeric: 'tabular-nums',
                 fontSize: 'var(--font-size-xs)',
-                opacity: 0.85,
+                opacity: activeTab === 'etapas' ? 0.95 : 0.8,
+                color: activeTab === 'etapas' ? '#ffffff' : 'inherit',
+                fontWeight: 600,
               }}
             >
-              ({stages.length})
+              ({currentStages.length})
             </span>
           </button>
 
@@ -282,18 +314,18 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             onClick={() => changeTab('pagos')}
             style={{
               minHeight: 'var(--touch-target-min)',
-              padding: '0.5rem 0.9rem',
+              padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'pagos' ? 700 : 600,
               backgroundColor: activeTab === 'pagos' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'pagos' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
-              border: activeTab === 'pagos' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: activeTab === 'pagos' ? '#ffffff' : 'var(--color-text-main)',
+              border: activeTab === 'pagos' ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              boxShadow: activeTab === 'pagos' ? 'var(--shadow-sm)' : 'none',
+              boxShadow: activeTab === 'pagos' ? '0 2px 8px rgba(23, 63, 53, 0.25)' : 'none',
               transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
@@ -323,18 +355,18 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             onClick={() => changeTab('familias')}
             style={{
               minHeight: 'var(--touch-target-min)',
-              padding: '0.5rem 0.9rem',
+              padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'familias' ? 700 : 600,
               backgroundColor: activeTab === 'familias' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'familias' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
-              border: activeTab === 'familias' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: activeTab === 'familias' ? '#ffffff' : 'var(--color-text-main)',
+              border: activeTab === 'familias' ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              boxShadow: activeTab === 'familias' ? 'var(--shadow-sm)' : 'none',
+              boxShadow: activeTab === 'familias' ? '0 2px 8px rgba(23, 63, 53, 0.25)' : 'none',
               transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
@@ -343,10 +375,12 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               style={{
                 fontVariantNumeric: 'tabular-nums',
                 fontSize: 'var(--font-size-xs)',
-                opacity: 0.85,
+                opacity: activeTab === 'familias' ? 0.95 : 0.8,
+                color: activeTab === 'familias' ? '#ffffff' : 'inherit',
+                fontWeight: 600,
               }}
             >
-              ({participants.length})
+              ({currentParticipants.length})
             </span>
           </button>
 
@@ -358,18 +392,18 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             onClick={() => changeTab('soporte')}
             style={{
               minHeight: 'var(--touch-target-min)',
-              padding: '0.5rem 0.9rem',
+              padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'soporte' ? 700 : 600,
               backgroundColor: activeTab === 'soporte' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'soporte' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
-              border: activeTab === 'soporte' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: activeTab === 'soporte' ? '#ffffff' : 'var(--color-text-main)',
+              border: activeTab === 'soporte' ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              boxShadow: activeTab === 'soporte' ? 'var(--shadow-sm)' : 'none',
+              boxShadow: activeTab === 'soporte' ? '0 2px 8px rgba(23, 63, 53, 0.25)' : 'none',
               transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
@@ -399,18 +433,18 @@ export const OrganizerEventTabs: React.FC<Props> = ({
             onClick={() => changeTab('ajustes')}
             style={{
               minHeight: 'var(--touch-target-min)',
-              padding: '0.5rem 0.9rem',
+              padding: '0.5rem 1rem',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--font-size-sm)',
               fontWeight: activeTab === 'ajustes' ? 700 : 600,
               backgroundColor: activeTab === 'ajustes' ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === 'ajustes' ? 'var(--color-text-on-primary)' : 'var(--color-text-main)',
-              border: activeTab === 'ajustes' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: activeTab === 'ajustes' ? '#ffffff' : 'var(--color-text-main)',
+              border: activeTab === 'ajustes' ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               cursor: 'pointer',
-              boxShadow: activeTab === 'ajustes' ? 'var(--shadow-sm)' : 'none',
+              boxShadow: activeTab === 'ajustes' ? '0 2px 8px rgba(23, 63, 53, 0.25)' : 'none',
               transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
             }}
           >
@@ -517,7 +551,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
                 Familias
               </span>
               <span style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                {participants.length}
+                {currentParticipants.length}
               </span>
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
                 Convocadas con enlace único
@@ -545,7 +579,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               <span style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>
                 {activeStages.length}{' '}
                 <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--color-text-subtle)' }}>
-                  / {stages.length}
+                  / {currentStages.length}
                 </span>
               </span>
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
@@ -575,7 +609,7 @@ export const OrganizerEventTabs: React.FC<Props> = ({
                 ${(initialSummary.verifiedTotalAmountMinor / 100).toLocaleString('es-UY')} {initialSummary.currency}
               </span>
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
-                {initialSummary.verifiedCount} de {participants.length} verificadas ({percentCollected}%)
+                {initialSummary.verifiedCount} de {currentParticipants.length} verificadas ({percentCollected}%)
               </span>
             </div>
 
@@ -749,7 +783,11 @@ export const OrganizerEventTabs: React.FC<Props> = ({
               Consultas del evento
             </h3>
           </div>
-          <StageAdminControls eventId={eventId} initialStages={stages} />
+          <StageAdminControls
+            eventId={eventId}
+            initialStages={currentStages}
+            onStageDeleted={handleStageDeleted}
+          />
         </section>
       )}
 
@@ -769,7 +807,13 @@ export const OrganizerEventTabs: React.FC<Props> = ({
       {activeTab === 'familias' && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
           {/* Asistente de Enlaces y WhatsApp */}
-          <WhatsAppAdminSection eventName={eventName} participants={participants} />
+          <WhatsAppAdminSection
+            eventName={eventName}
+            eventId={eventId}
+            participants={currentParticipants}
+            onParticipantDeleted={handleParticipantDeleted}
+            onParticipantUpdated={handleParticipantUpdated}
+          />
 
           {/* Importación y Gestión de Participantes */}
           <ParticipantImportSection eventId={eventId} />
@@ -826,8 +870,8 @@ export const OrganizerEventTabs: React.FC<Props> = ({
           <DeleteEventSection
             eventId={eventId}
             eventName={currentEventName}
-            stageCount={stages.length}
-            participantCount={participants.length}
+            stageCount={currentStages.length}
+            participantCount={currentParticipants.length}
           />
         </section>
       )}

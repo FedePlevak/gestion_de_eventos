@@ -224,3 +224,61 @@ export async function regenerateFamilyAccess(params: {
 
   return { rawSecret: newSecret, accessVersion: newVersion };
 }
+
+/**
+ * Elimina de forma segura un participante invitado al evento.
+ * Revoca el acceso inmediato invalidando su tokenHash y eliminando el registro del evento.
+ */
+export async function deleteFamilyParticipant(params: {
+  workspaceId: string;
+  eventId: string;
+  participantId: string;
+  actorOrganizerId: string;
+  reason?: string;
+}): Promise<{ deletedFamilyName: string }> {
+  const db = getAdminDb();
+  const participantRef = db
+    .collection('workspaces')
+    .doc(params.workspaceId)
+    .collection('events')
+    .doc(params.eventId)
+    .collection('participants')
+    .doc(params.participantId);
+
+  const doc = await participantRef.get();
+  if (!doc.exists) {
+    throw new NotFoundError('La familia invitada no existe o ya fue eliminada.');
+  }
+
+  const data = doc.data() as FamilyParticipant;
+  const tokenHash = data.tokenHash;
+  const familyName = data.familyName || 'Familia';
+
+  // 1. Eliminar token de acceso para revocar el enlace de inmediato
+  if (tokenHash) {
+    try {
+      await db.collection('access_tokens').doc(tokenHash).delete();
+    } catch (e) {
+      console.warn('Error al eliminar token de acceso:', e);
+    }
+  }
+
+  // 2. Eliminar documento del participante
+  await participantRef.delete();
+
+  // 3. Registrar auditoría
+  await recordAuditEvent({
+    workspaceId: params.workspaceId,
+    eventId: params.eventId,
+    actor: { type: 'organizer', id: params.actorOrganizerId },
+    action: 'DELETE_PARTICIPANT',
+    targetType: 'participant',
+    targetId: params.participantId,
+    details: {
+      familyName,
+      reason: params.reason || 'Eliminación manual por el comité organizador',
+    },
+  });
+
+  return { deletedFamilyName: familyName };
+}

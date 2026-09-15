@@ -22,6 +22,9 @@ function createDocRef(currentPath: string) {
       const current = memoryStore.get(currentPath) || {};
       memoryStore.set(currentPath, { ...current, ...data });
     },
+    delete: async () => {
+      memoryStore.delete(currentPath);
+    },
     collection: (subColName: string) => createCollectionRef(`${currentPath}/${subColName}`),
   };
 }
@@ -31,6 +34,11 @@ function createCollectionRef(currentPath: string) {
     doc: (docId?: string) => {
       const id = docId || `doc_${Math.random().toString(36).substring(2, 9)}`;
       return createDocRef(`${currentPath}/${id}`);
+    },
+    add: async (data: any) => {
+      const id = `doc_${Math.random().toString(36).substring(2, 9)}`;
+      memoryStore.set(`${currentPath}/${id}`, data);
+      return { id };
     },
     where: () => ({
       get: async () => ({
@@ -179,6 +187,74 @@ describe('Reglas de Negocio y Criterios de Aceptación', () => {
       await expect(
         validateOrganizerEventAccess(context, 'evento_A', 'ws_01')
       ).rejects.toThrow('Tu acceso como organizador a este evento fue revocado.');
+    });
+  });
+
+  describe('Criterios A06, A07: Gestión Segura de Familias y Enlaces', () => {
+    it('permite eliminar a una familia invitada y revoca de inmediato su token de acceso', async () => {
+      const { deleteFamilyParticipant } = await import('../src/modules/access/family-service');
+
+      const rawSecret = generateRawSecret();
+      const tokenHash = hashFamilySecret(rawSecret);
+
+      memoryStore.set('workspaces/ws_01/events/evento_A/participants/part_dup', {
+        id: 'part_dup',
+        familyName: 'Familia Duplicada',
+        tokenHash,
+        status: 'active',
+      });
+      memoryStore.set(`access_tokens/${tokenHash}`, {
+        workspaceId: 'ws_01',
+        eventId: 'evento_A',
+        participantId: 'part_dup',
+      });
+
+      const res = await deleteFamilyParticipant({
+        workspaceId: 'ws_01',
+        eventId: 'evento_A',
+        participantId: 'part_dup',
+        actorOrganizerId: 'org_01',
+      });
+
+      expect(res.deletedFamilyName).toBe('Familia Duplicada');
+      expect(memoryStore.has('workspaces/ws_01/events/evento_A/participants/part_dup')).toBe(false);
+      expect(memoryStore.has(`access_tokens/${tokenHash}`)).toBe(false);
+    });
+
+    it('permite regenerar el enlace de una familia e incrementa accessVersion', async () => {
+      const { regenerateFamilyAccess } = await import('../src/modules/access/family-service');
+
+      const oldSecret = generateRawSecret();
+      const oldHash = hashFamilySecret(oldSecret);
+
+      memoryStore.set('workspaces/ws_01/events/evento_A/participants/part_perdido', {
+        id: 'part_perdido',
+        familyName: 'Familia Perdida',
+        tokenHash: oldHash,
+        accessVersion: 1,
+        status: 'active',
+      });
+      memoryStore.set(`access_tokens/${oldHash}`, {
+        workspaceId: 'ws_01',
+        eventId: 'evento_A',
+        participantId: 'part_perdido',
+        accessVersion: 1,
+      });
+
+      const res = await regenerateFamilyAccess({
+        workspaceId: 'ws_01',
+        eventId: 'evento_A',
+        participantId: 'part_perdido',
+        actorOrganizerId: 'org_01',
+        reason: 'Enlace extraviado',
+      });
+
+      expect(res.rawSecret).toBeDefined();
+      expect(res.accessVersion).toBe(2);
+
+      const partData = memoryStore.get('workspaces/ws_01/events/evento_A/participants/part_perdido');
+      expect(partData.accessVersion).toBe(2);
+      expect(partData.tokenHash).not.toBe(oldHash);
     });
   });
 });

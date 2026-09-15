@@ -7,6 +7,7 @@ import {
   updateStageAdmin,
   reopenStageAdmin,
   closeStageAdmin,
+  deleteStageAdmin,
 } from '../src/modules/stages/service';
 import { FamilySessionContext, OrganizerSessionContext } from '../src/modules/access/types';
 
@@ -32,6 +33,9 @@ function createDocRef(currentPath: string) {
     update: async (data: any) => {
       const current = memoryStore.get(currentPath) || {};
       memoryStore.set(currentPath, { ...current, ...data });
+    },
+    delete: async () => {
+      memoryStore.delete(currentPath);
     },
     collection: (subColName: string) => createCollectionRef(`${currentPath}/${subColName}`),
   };
@@ -529,6 +533,44 @@ describe('Incremento 2: Criterios de Aceptación de Etapas y Respuestas', () => 
           // Falta q_motivo
         })
       ).rejects.toThrow('El campo "Motivo de inasistencia" es obligatorio.');
+    });
+  });
+
+  describe('Criterio E16: Eliminación de consultas (etapas)', () => {
+    it('permite a un organizador eliminar una consulta existente y registra auditoría', async () => {
+      // Crear consulta en memoria
+      const stagePath = 'workspaces/ws_1/events/event_1/stages/stage_a_borrar';
+      memoryStore.set(stagePath, {
+        id: 'stage_a_borrar',
+        title: 'Consulta accidental para borrar',
+        type: 'composite',
+        status: 'draft',
+        order: 1,
+      });
+
+      const organizer: OrganizerSessionContext = {
+        organizerId: 'org_1',
+        email: 'organizador@ejemplo.com',
+        workspaceId: 'ws_1',
+      };
+
+      const result = await deleteStageAdmin(organizer, 'event_1', 'stage_a_borrar');
+      expect(result.deletedTitle).toBe('Consulta accidental para borrar');
+
+      // Verificar que ya no existe en el store
+      expect(memoryStore.has(stagePath)).toBe(false);
+    });
+
+    it('rechaza la eliminación si la consulta no existe', async () => {
+      const organizer: OrganizerSessionContext = {
+        organizerId: 'org_1',
+        email: 'organizador@ejemplo.com',
+        workspaceId: 'ws_1',
+      };
+
+      await expect(
+        deleteStageAdmin(organizer, 'event_1', 'stage_inexistente')
+      ).rejects.toThrow('La consulta que querés eliminar no existe.');
     });
   });
 });
