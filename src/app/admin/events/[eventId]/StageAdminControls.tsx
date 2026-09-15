@@ -7,6 +7,9 @@ import { Input } from '@/components/Input';
 import { Badge } from '@/components/Badge';
 import { StageCountdown } from '@/components/StageCountdown';
 
+import { StageQuestionBuilder, getDefaultNewQuestion } from './StageQuestionBuilder';
+import { StageQuestion } from '@/modules/stages/types';
+
 export interface StageSummary {
   id: string;
   title: string;
@@ -20,6 +23,7 @@ export interface StageSummary {
   readCount: number;
   isSemanticallyLocked: boolean;
   options?: Array<{ id: string; label: string; description?: string }>;
+  questions?: StageQuestion[];
   clarifications?: { id: string; content: string; createdAt: string }[];
 }
 
@@ -42,10 +46,11 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
   // Estados para creación de nueva etapa
   const [isCreating, setIsCreating] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
-  const [createType, setCreateType] = useState<string>('single_choice');
   const [createDescription, setCreateDescription] = useState('');
   const [createDeadline, setCreateDeadline] = useState('');
-  const [createOptions, setCreateOptions] = useState<string[]>(['Opción A', 'Opción B']);
+  const [createQuestions, setCreateQuestions] = useState<StageQuestion[]>([
+    getDefaultNewQuestion('yes_no'),
+  ]);
   const [createPublishImmediately, setCreatePublishImmediately] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -55,7 +60,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
-  const [editOptions, setEditOptions] = useState<string[]>([]);
+  const [editQuestions, setEditQuestions] = useState<StageQuestion[]>([]);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -112,48 +117,30 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     refreshStages();
   }, [eventId]);
 
-  // Manejo de opciones en creación
-  const handleAddOption = () => {
-    setCreateOptions((prev) => [...prev, `Opción ${String.fromCharCode(65 + prev.length)}`]);
-  };
-
-  const handleOptionChange = (index: number, value: string) => {
-    setCreateOptions((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-  };
-
-  const handleRemoveOption = (index: number) => {
-    if (createOptions.length <= 2) {
-      alert('Se requieren al menos 2 opciones.');
-      return;
-    }
-    setCreateOptions((prev) => prev.filter((_, i) => i !== index));
-  };
-
   // Guardar nueva etapa
   const handleCreateStage = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
 
     if (!createTitle.trim()) {
-      setCreateError('El título de la consulta es obligatorio.');
+      setCreateError('El título general de la consulta es obligatorio.');
       return;
     }
 
-    let formattedOptions: { id: string; label: string }[] | undefined = undefined;
-    if (createType === 'single_choice' || createType === 'multiple_choice') {
-      const validOptions = createOptions.map((o) => o.trim()).filter(Boolean);
-      if (validOptions.length < 2) {
-        setCreateError('Debés ingresar al menos 2 opciones de respuesta válidas.');
+    if (createQuestions.length === 0) {
+      setCreateError('Debés incluir al menos una pregunta o campo en la consulta.');
+      return;
+    }
+
+    for (const q of createQuestions) {
+      if (!q.title.trim()) {
+        setCreateError('Todas las preguntas o campos deben tener un título.');
         return;
       }
-      formattedOptions = validOptions.map((label, idx) => ({
-        id: `opt_${Date.now()}_${idx + 1}`,
-        label,
-      }));
+      if ((q.type === 'single_choice' || q.type === 'multiple_choice') && (!q.options || q.options.length < 2)) {
+        setCreateError(`La pregunta "${q.title}" debe tener al menos 2 opciones.`);
+        return;
+      }
     }
 
     setCreateLoading(true);
@@ -162,7 +149,8 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
       const payload: any = {
         title: createTitle.trim(),
         description: createDescription.trim() || undefined,
-        type: createType,
+        type: 'composite',
+        questions: createQuestions,
         visibility: createPublishImmediately ? 'visible' : 'hidden',
         status: 'open',
         order: stages.length + 1,
@@ -170,10 +158,6 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
 
       if (createDeadline) {
         payload.deadlineAt = new Date(createDeadline).toISOString();
-      }
-
-      if (formattedOptions) {
-        payload.options = formattedOptions;
       }
 
       const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages`, {
@@ -197,9 +181,8 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
       // Resetear campos
       setCreateTitle('');
       setCreateDescription('');
-      setCreateType('single_choice');
       setCreateDeadline('');
-      setCreateOptions(['Opción A', 'Opción B']);
+      setCreateQuestions([getDefaultNewQuestion('yes_no')]);
       setCreatePublishImmediately(false);
 
       await refreshStages();
@@ -216,7 +199,7 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
     setEditTitle(stage.title);
     setEditDescription(stage.description || '');
 
-    // Formatear correctamente la fecha local para el input datetime-local (YYYY-MM-DDTHH:mm)
+    // Formatear correctamente la fecha local para el input datetime-local
     let localIso = '';
     if (stage.deadlineAt) {
       const d = new Date(stage.deadlineAt);
@@ -227,29 +210,29 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
       }
     }
     setEditDeadline(localIso);
-    setEditOptions(stage.options ? stage.options.map((o) => o.label) : ['Opción A', 'Opción B']);
+
+    // Cargar preguntas en el constructor
+    if (stage.questions && stage.questions.length > 0) {
+      setEditQuestions(JSON.parse(JSON.stringify(stage.questions)));
+    } else {
+      // Compatibilidad con etapas simples
+      setEditQuestions([
+        {
+          id: 'q_main',
+          title: stage.title,
+          description: stage.description,
+          type: (stage.type as any) || 'single_choice',
+          required: true,
+          options: stage.options || [
+            { id: 'opt_1', label: 'Opción A' },
+            { id: 'opt_2', label: 'Opción B' },
+          ],
+        },
+      ]);
+    }
+
     setEditError(null);
     setActiveActionStageId(null);
-  };
-
-  const handleEditAddOption = () => {
-    setEditOptions((prev) => [...prev, `Opción ${String.fromCharCode(65 + prev.length)}`]);
-  };
-
-  const handleEditOptionChange = (idx: number, val: string) => {
-    setEditOptions((prev) => {
-      const next = [...prev];
-      next[idx] = val;
-      return next;
-    });
-  };
-
-  const handleEditRemoveOption = (idx: number) => {
-    if (editOptions.length <= 2) {
-      alert('Se requieren al menos 2 opciones.');
-      return;
-    }
-    setEditOptions((prev) => prev.filter((_, i) => i !== idx));
   };
 
   // Guardar edición
@@ -283,25 +266,25 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
         deadlineAt: deadlineIso,
       };
 
-      // Solo enviar options si la etapa NO está bloqueada semánticamente Y las opciones cambiaron
-      if (!currentStage.isSemanticallyLocked && (currentStage.type === 'single_choice' || currentStage.type === 'multiple_choice')) {
-        const valid = editOptions.map((o) => o.trim()).filter(Boolean);
-        if (valid.length < 2) {
-          setEditError('Debés ingresar al menos 2 opciones.');
+      if (!currentStage.isSemanticallyLocked) {
+        if (editQuestions.length === 0) {
+          setEditError('Debés incluir al menos una pregunta o campo.');
           setEditLoading(false);
           return;
         }
-
-        const originalLabels = (currentStage.options || []).map((o) => o.label.trim());
-        const hasOptionsChanged =
-          valid.length !== originalLabels.length || valid.some((v, i) => v !== originalLabels[i]);
-
-        if (hasOptionsChanged) {
-          payload.options = valid.map((label, idx) => ({
-            id: currentStage.options?.[idx]?.id || `opt_${Date.now()}_${idx + 1}`,
-            label,
-          }));
+        for (const q of editQuestions) {
+          if (!q.title.trim()) {
+            setEditError('Todas las preguntas o campos deben tener un título.');
+            setEditLoading(false);
+            return;
+          }
+          if ((q.type === 'single_choice' || q.type === 'multiple_choice') && (!q.options || q.options.length < 2)) {
+            setEditError(`La pregunta "${q.title}" debe tener al menos 2 opciones.`);
+            setEditLoading(false);
+            return;
+          }
         }
+        payload.questions = editQuestions;
       }
 
       const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/stages/${encodeURIComponent(stageId)}`, {
@@ -531,80 +514,13 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
               onChange={(e) => setCreateDescription(e.target.value)}
             />
 
-            <div>
-              <label style={{ display: 'block', fontSize: 'var(--font-size-xs)', fontWeight: 600, marginBottom: 'var(--spacing-1)' }}>
-                Tipo de consulta
-              </label>
-              <select
-                value={createType}
-                onChange={(e) => setCreateType(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.65rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                  fontSize: 'var(--font-size-sm)',
-                  backgroundColor: 'var(--color-surface)',
-                }}
-              >
-                <option value="single_choice">Opción única (Votar una sola alternativa)</option>
-                <option value="multiple_choice">Opción múltiple (Permitir varias opciones)</option>
-                <option value="yes_no">Sí / No</option>
-                <option value="integer_quantity">Cantidad numérica (Ej: cuántas personas asisten)</option>
-                <option value="open_text">Texto libre / Sugerencias</option>
-                <option value="info">Solo Informativa (Lectura con confirmación)</option>
-              </select>
+            {/* Constructor interactivo de preguntas y campos */}
+            <div style={{ marginTop: 'var(--spacing-1)' }}>
+              <StageQuestionBuilder
+                questions={createQuestions}
+                onChange={setCreateQuestions}
+              />
             </div>
-
-            {(createType === 'single_choice' || createType === 'multiple_choice') && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--spacing-2)',
-                  padding: 'var(--spacing-3)',
-                  backgroundColor: 'var(--color-surface-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                }}
-              >
-                <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
-                  Opciones de respuesta disponibles:
-                </span>
-                {createOptions.map((opt, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
-                    <Input
-                      label=""
-                      placeholder={`Opción ${idx + 1}`}
-                      value={opt}
-                      onChange={(e) => handleOptionChange(idx, e.target.value)}
-                    />
-                    {createOptions.length > 2 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveOption(idx)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--color-error-text, #c62828)',
-                          cursor: 'pointer',
-                          padding: '0.4rem',
-                          fontSize: 'var(--font-size-sm)',
-                        }}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 'var(--spacing-1)' }}>
-                  <Button type="button" variant="outline" onClick={handleAddOption} style={{ fontSize: 'var(--font-size-xs)', minHeight: '30px' }}>
-                    + Agregar otra opción
-                  </Button>
-                </div>
-              </div>
-            )}
 
             <Input
               label="Fecha y hora de cierre automático (opcional)"
@@ -930,70 +846,14 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                     onChange={(e) => setEditDeadline(e.target.value)}
                   />
 
-                  {/* Opciones de respuesta si corresponde */}
-                  {(stage.type === 'single_choice' || stage.type === 'multiple_choice') && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 'var(--spacing-2)',
-                        padding: 'var(--spacing-3)',
-                        backgroundColor: 'var(--color-surface-subtle)',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--color-border)',
-                      }}
-                    >
-                      <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
-                        Opciones de respuesta:
-                      </span>
-
-                      {stage.isSemanticallyLocked ? (
-                        <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning-text)', fontWeight: 600 }}>
-                          🔒 Ya se registraron votos de familias en esta consulta. Por seguridad de los resultados, las opciones no se pueden modificar.
-                        </div>
-                      ) : (
-                        <>
-                          {editOptions.map((opt, idx) => (
-                            <div key={idx} style={{ display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
-                              <Input
-                                label=""
-                                placeholder={`Opción ${idx + 1}`}
-                                value={opt}
-                                onChange={(e) => handleEditOptionChange(idx, e.target.value)}
-                              />
-                              {editOptions.length > 2 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditRemoveOption(idx)}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: 'var(--color-error-text, #c62828)',
-                                    cursor: 'pointer',
-                                    padding: '0.4rem',
-                                    fontSize: 'var(--font-size-sm)',
-                                  }}
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          ))}
-
-                          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={handleEditAddOption}
-                              style={{ fontSize: 'var(--font-size-xs)', minHeight: '30px' }}
-                            >
-                              + Agregar opción
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+                  {/* Constructor de preguntas en edición */}
+                  <div style={{ marginTop: 'var(--spacing-1)' }}>
+                    <StageQuestionBuilder
+                      questions={editQuestions}
+                      onChange={setEditQuestions}
+                      isLocked={stage.isSemanticallyLocked}
+                    />
+                  </div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-2)' }}>
                     <Button type="button" variant="outline" onClick={() => setEditingStageId(null)}>
@@ -1097,13 +957,133 @@ export const StageAdminControls: React.FC<Props> = ({ eventId, initialStages }) 
                             </Button>
                           </div>
 
-                          {/* Pestaña 1: Conteo de opciones */}
+                          {/* Pestaña 1: Conteo de opciones / Desglose de preguntas */}
                           {currentTab === 'breakdown' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
                               {overview.totalResponded === 0 ? (
                                 <div style={{ padding: 'var(--spacing-3)', textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                                  Aún no se han recibido votos para esta consulta.
+                                  Aún no se han recibido respuestas para esta consulta.
                                 </div>
+                              ) : overview.questionsBreakdown && overview.questionsBreakdown.length > 0 ? (
+                                overview.questionsBreakdown.map((qItem: any) => (
+                                  <div
+                                    key={qItem.questionId}
+                                    style={{
+                                      backgroundColor: 'var(--color-surface)',
+                                      padding: 'var(--spacing-3)',
+                                      borderRadius: 'var(--radius-md)',
+                                      border: '1px solid var(--color-border)',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: 'var(--spacing-2)',
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span style={{ fontWeight: 700, fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
+                                        {qItem.title}
+                                      </span>
+                                      {qItem.totalSum !== undefined && (
+                                        <Badge variant="warning">
+                                          Total acumulado: {qItem.totalSum}
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {/* Opciones Sí/No o Selecciones */}
+                                    {qItem.options && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-1)' }}>
+                                        {qItem.options.map((opt: any) => (
+                                          <div key={opt.optionId} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>
+                                              <span>{opt.label}</span>
+                                              <span>{opt.count} ({opt.percentage}%)</span>
+                                            </div>
+                                            <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
+                                              <div
+                                                style={{
+                                                  width: `${opt.percentage}%`,
+                                                  height: '100%',
+                                                  backgroundColor: opt.count > 0 ? 'var(--color-primary)' : 'transparent',
+                                                  transition: 'width 0.4s ease',
+                                                }}
+                                              />
+                                            </div>
+                                            {opt.familyNames && opt.familyNames.length > 0 && (
+                                              <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '2px' }}>
+                                                {opt.familyNames.map((fn: string, i: number) => (
+                                                  <span
+                                                    key={i}
+                                                    style={{
+                                                      fontSize: '11px',
+                                                      backgroundColor: 'var(--color-surface-subtle)',
+                                                      border: '1px solid var(--color-border)',
+                                                      borderRadius: 'var(--radius-sm)',
+                                                      padding: '0.05rem 0.35rem',
+                                                    }}
+                                                  >
+                                                    Familia {fn}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Cantidades numéricas */}
+                                    {qItem.totalSum !== undefined && qItem.entries && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)', marginTop: 'var(--spacing-1)' }}>
+                                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+                                          Promedio: {qItem.average} por familia • {qItem.respondedCount} respuestas
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                                          {qItem.entries.map((ent: any, i: number) => (
+                                            <span
+                                              key={i}
+                                              style={{
+                                                fontSize: '11px',
+                                                backgroundColor: 'var(--color-surface-subtle)',
+                                                border: '1px solid var(--color-border)',
+                                                borderRadius: 'var(--radius-sm)',
+                                                padding: '0.1rem 0.4rem',
+                                              }}
+                                            >
+                                              Familia {ent.familyName}: <strong>{ent.quantity}</strong>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Texto libre */}
+                                    {qItem.type === 'open_text' && qItem.entries && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)', marginTop: 'var(--spacing-1)' }}>
+                                        {qItem.entries.length === 0 ? (
+                                          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>
+                                            Sin comentarios ingresados
+                                          </span>
+                                        ) : (
+                                          qItem.entries.map((entry: any, i: number) => (
+                                            <div
+                                              key={i}
+                                              style={{
+                                                fontSize: 'var(--font-size-xs)',
+                                                padding: 'var(--spacing-2)',
+                                                backgroundColor: 'var(--color-surface-subtle)',
+                                                borderRadius: 'var(--radius-sm)',
+                                                border: '1px solid var(--color-border)',
+                                              }}
+                                            >
+                                              <strong>Familia {entry.familyName}: </strong>
+                                              <span>{entry.text}</span>
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
                               ) : (
                                 overview.breakdown?.map((item: any) => (
                                   <div

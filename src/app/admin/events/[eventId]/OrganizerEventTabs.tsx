@@ -14,6 +14,7 @@ import { ExportAdminSection } from './ExportAdminSection';
 import { ParticipantImportSection } from './ParticipantImportSection';
 import { OrganizerTeamSection } from './OrganizerTeamSection';
 import { DeleteEventSection } from './DeleteEventSection';
+import { EditEventModal } from './EditEventModal';
 
 import { PaymentConfig } from '@/modules/events/types';
 
@@ -59,6 +60,11 @@ export const OrganizerEventTabs: React.FC<Props> = ({
   initialTickets,
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('resumen');
+  const [currentEventName, setCurrentEventName] = useState(eventName);
+  const [currentDescription, setCurrentDescription] = useState(eventData.description || '');
+  const [currentEventDate, setCurrentEventDate] = useState<string | null>(eventData.eventDate || null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [eventFeedback, setEventFeedback] = useState<string | null>(null);
 
   // Sincronizar tab con hash de la URL (#resumen, #etapas, #pagos, etc.)
   useEffect(() => {
@@ -116,31 +122,69 @@ export const OrganizerEventTabs: React.FC<Props> = ({
         </Link>
       </div>
 
-      {/* Encabezado del Evento */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
-        <h2
+      {/* Mensaje de feedback de actualización del evento */}
+      {eventFeedback && (
+        <div
+          role="status"
           style={{
-            fontSize: 'var(--font-size-2xl)',
-            fontWeight: 800,
-            color: 'var(--color-primary)',
-            lineHeight: 'var(--line-height-tight)',
-            wordBreak: 'break-word',
+            padding: 'var(--spacing-3)',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'var(--color-success-bg)',
+            border: '1px solid var(--color-success-border)',
+            color: 'var(--color-success-text)',
+            fontSize: 'var(--font-size-sm)',
+            fontWeight: 600,
           }}
         >
-          {eventName}
-        </h2>
-        {eventData.description && (
-          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-            {eventData.description}
-          </p>
-        )}
+          {eventFeedback}
+        </div>
+      )}
+
+      {/* Encabezado del Evento */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
+          <div style={{ flex: 1, minWidth: '240px' }}>
+            <h2
+              style={{
+                fontSize: 'var(--font-size-2xl)',
+                fontWeight: 800,
+                color: 'var(--color-primary)',
+                lineHeight: 'var(--line-height-tight)',
+                wordBreak: 'break-word',
+                margin: 0,
+              }}
+            >
+              {currentEventName}
+            </h2>
+            {currentDescription && (
+              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: 'var(--spacing-1) 0 0 0' }}>
+                {currentDescription}
+              </p>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={() => setShowEditModal(true)}
+            style={{
+              fontSize: 'var(--font-size-xs)',
+              minHeight: 'var(--touch-target-min)',
+              padding: '0.35rem 0.75rem',
+            }}
+          >
+            ✏️ Editar información
+          </Button>
+        </div>
+
         <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap', alignItems: 'center' }}>
           <Badge variant="success">Activo</Badge>
           <Badge variant="info">{participants.length} Familias convocadas</Badge>
-          {eventData.eventDate && (
+          {currentEventDate ? (
             <Badge variant="neutral">
-              📅 {new Date(eventData.eventDate).toLocaleDateString('es-UY', { dateStyle: 'medium' })}
+              📅 {new Date(currentEventDate).toLocaleDateString('es-UY', { dateStyle: 'medium' })}
             </Badge>
+          ) : (
+            <Badge variant="neutral">📅 Fecha pendiente</Badge>
           )}
           <Badge variant="neutral">Zona: {eventData.timezone || 'America/Montevideo'}</Badge>
         </div>
@@ -742,6 +786,36 @@ export const OrganizerEventTabs: React.FC<Props> = ({
       {/* 6. PESTAÑA AJUSTES Y EQUIPO */}
       {activeTab === 'ajustes' && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
+          {/* Tarjeta de Información Básica */}
+          <Card
+            title="Información básica del evento"
+            subtitle="Modificá el nombre, la descripción y la fecha estimada de la convocatoria"
+            action={
+              <Button variant="outline" onClick={() => setShowEditModal(true)} style={{ fontSize: 'var(--font-size-xs)' }}>
+                ✏️ Modificar
+              </Button>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)', fontSize: 'var(--font-size-sm)' }}>
+              <div>
+                <span style={{ color: 'var(--color-text-subtle)' }}>Nombre del evento: </span>
+                <strong>{currentEventName}</strong>
+              </div>
+              <div>
+                <span style={{ color: 'var(--color-text-subtle)' }}>Descripción: </span>
+                <span>{currentDescription || 'Sin descripción configurada'}</span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--color-text-subtle)' }}>Fecha estimada: </span>
+                <strong>
+                  {currentEventDate
+                    ? new Date(currentEventDate).toLocaleDateString('es-UY', { dateStyle: 'long' })
+                    : 'Sin fecha definida'}
+                </strong>
+              </div>
+            </div>
+          </Card>
+
           {/* Equipo Organizador */}
           <OrganizerTeamSection eventId={eventId} />
 
@@ -751,12 +825,29 @@ export const OrganizerEventTabs: React.FC<Props> = ({
           {/* Zona de Peligro - Eliminar Evento */}
           <DeleteEventSection
             eventId={eventId}
-            eventName={eventName}
+            eventName={currentEventName}
             stageCount={stages.length}
             participantCount={participants.length}
           />
         </section>
       )}
+
+      {/* Modal de edición de datos de evento */}
+      <EditEventModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        eventId={eventId}
+        initialName={currentEventName}
+        initialDescription={currentDescription}
+        initialEventDate={currentEventDate}
+        onSaved={(updated) => {
+          setCurrentEventName(updated.name);
+          setCurrentDescription(updated.description);
+          setCurrentEventDate(updated.eventDate);
+          setEventFeedback('✓ Información del evento actualizada correctamente.');
+          setTimeout(() => setEventFeedback(null), 5000);
+        }}
+      />
     </div>
   );
 };

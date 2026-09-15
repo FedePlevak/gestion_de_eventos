@@ -23,6 +23,95 @@ function validateAnswersForStageType(stage: StageModel, answers: Record<string, 
     throw new ValidationError('El formato de las respuestas es inválido.');
   }
 
+  // Si la etapa contiene preguntas estructuradas (etapa compuesta)
+  if (stage.questions && stage.questions.length > 0) {
+    for (const q of stage.questions) {
+      if (q.type === 'info') continue;
+
+      // Evaluar lógica condicional si depende de otra pregunta
+      if (q.condition) {
+        const parentVal = answers[q.condition.dependsOnQuestionId];
+        const conditionMet =
+          q.condition.operator === 'equals'
+            ? parentVal === q.condition.value
+            : parentVal !== q.condition.value;
+
+        if (!conditionMet) {
+          // El campo está condicionalmente oculto: no se valida ni exige
+          continue;
+        }
+      }
+
+      const val = answers[q.id];
+
+      // Validar obligatoriedad
+      if (q.required) {
+        if (val === undefined || val === null || val === '') {
+          throw new ValidationError(`El campo "${q.title}" es obligatorio.`);
+        }
+        if (q.type === 'multiple_choice' && (!Array.isArray(val) || val.length === 0)) {
+          throw new ValidationError(`Debés seleccionar al menos una opción en "${q.title}".`);
+        }
+      }
+
+      // Validar formato si el valor fue proporcionado
+      if (val !== undefined && val !== null && val !== '') {
+        switch (q.type) {
+          case 'yes_no':
+            if (val !== 'yes' && val !== 'no') {
+              throw new ValidationError(`En "${q.title}" debés responder Sí o No.`);
+            }
+            break;
+
+          case 'single_choice': {
+            const validOptionIds = (q.options || []).map((o) => o.id);
+            if (!validOptionIds.includes(val)) {
+              throw new ValidationError(`La opción elegida en "${q.title}" no es válida.`);
+            }
+            break;
+          }
+
+          case 'multiple_choice': {
+            if (!Array.isArray(val)) {
+              throw new ValidationError(`El formato de respuesta en "${q.title}" no es válido.`);
+            }
+            const validOptionIds = (q.options || []).map((o) => o.id);
+            const allValid = val.every((c: any) => validOptionIds.includes(c));
+            if (!allValid) {
+              throw new ValidationError(`Una o más opciones en "${q.title}" no son válidas.`);
+            }
+            break;
+          }
+
+          case 'integer_quantity': {
+            const qty = Number(val);
+            if (isNaN(qty) || !Number.isInteger(qty) || qty < 0) {
+              throw new ValidationError(`La cantidad en "${q.title}" debe ser un número entero mayor o igual a 0.`);
+            }
+            if (q.minQuantity !== undefined && qty < q.minQuantity) {
+              throw new ValidationError(`La cantidad en "${q.title}" debe ser al menos ${q.minQuantity}.`);
+            }
+            if (q.maxQuantity !== undefined && qty > q.maxQuantity) {
+              throw new ValidationError(`La cantidad en "${q.title}" no puede superar ${q.maxQuantity}.`);
+            }
+            break;
+          }
+
+          case 'open_text':
+            if (typeof val !== 'string') {
+              throw new ValidationError(`El texto en "${q.title}" no es válido.`);
+            }
+            break;
+
+          default:
+            break;
+        }
+      }
+    }
+    return;
+  }
+
+  // Validación para etapas clásicas de un solo tipo
   switch (stage.type) {
     case 'single_choice': {
       if (!answers.choice || typeof answers.choice !== 'string') {
@@ -381,7 +470,7 @@ export async function createStageAdmin(
     title: parsed.title,
     description: parsed.description || '',
     content: parsed.content || '',
-    type: parsed.type,
+    type: parsed.questions && parsed.questions.length > 0 ? 'composite' : parsed.type,
     status: 'open',
     visibility: parsed.visibility,
     order: parsed.order,
@@ -389,6 +478,7 @@ export async function createStageAdmin(
     timezone: parsed.timezone || 'America/Montevideo',
     isSemanticallyLocked: false,
     options: parsed.options || [],
+    questions: parsed.questions || [],
     clarifications: [],
     closures: [],
     reopenings: [],
@@ -483,6 +573,12 @@ export async function updateStageAdmin(
     if (parsed.deadlineAt !== undefined) updates.deadlineAt = parsed.deadlineAt || undefined;
     if (!stage.isSemanticallyLocked && parsed.options !== undefined) {
       updates.options = parsed.options;
+    }
+    if (!stage.isSemanticallyLocked && parsed.questions !== undefined) {
+      updates.questions = parsed.questions;
+      if (parsed.questions.length > 0 && stage.type !== 'composite') {
+        updates.type = 'composite';
+      }
     }
 
     transaction.update(stageRef, updates);

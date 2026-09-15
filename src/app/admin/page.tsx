@@ -142,10 +142,18 @@ export default function AdminDashboardPage() {
     setCreateError(null);
 
     try {
+      let formattedDate: string | undefined = undefined;
+      if (newEventDate && newEventDate.trim()) {
+        const parsed = new Date(newEventDate.trim());
+        if (!isNaN(parsed.getTime())) {
+          formattedDate = parsed.toISOString();
+        }
+      }
+
       const payload: any = {
         name: newEventName.trim(),
         description: newEventDesc.trim() || undefined,
-        eventDate: newEventDate ? new Date(newEventDate).toISOString() : undefined,
+        eventDate: formattedDate,
         paymentConfig: {
           enabled: enablePayment,
           expectedAmountMinor:
@@ -336,12 +344,34 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setNewEventDesc(e.target.value)}
                   />
 
-                  <Input
-                    label="Fecha estimada del evento (opcional)"
-                    type="date"
-                    value={newEventDate}
-                    onChange={(e) => setNewEventDate(e.target.value)}
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-1)' }}>
+                    <Input
+                      label="Fecha estimada del evento (opcional)"
+                      type="date"
+                      value={newEventDate}
+                      onChange={(e) => setNewEventDate(e.target.value)}
+                      helperText="Podés dejar este campo vacío si aún no definieron fecha. Podrás fijarla o editarla en cualquier momento."
+                    />
+                    {newEventDate && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          onClick={() => setNewEventDate('')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-primary)',
+                            fontSize: 'var(--font-size-xs)',
+                            cursor: 'pointer',
+                            padding: 'var(--spacing-1) 0',
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          Quitar fecha (dejar sin fecha definida)
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   <div
                     style={{

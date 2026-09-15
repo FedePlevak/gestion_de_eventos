@@ -399,4 +399,137 @@ describe('Incremento 2: Criterios de Aceptación de Etapas y Respuestas', () => 
       ).rejects.toThrow('Conflicto de concurrencia');
     });
   });
+
+  describe('Criterio E15: Etapas compuestas y lógica condicional de preguntas', () => {
+    const compositeStage = {
+      id: 'stage_convocatoria',
+      workspaceId: 'ws_colegio',
+      eventId: 'evento_fiesta_2026',
+      title: 'Convocatoria y Asistencia a la Fiesta',
+      type: 'composite',
+      status: 'open',
+      visibility: 'visible',
+      order: 1,
+      isSemanticallyLocked: false,
+      questions: [
+        {
+          id: 'q_asiste',
+          title: '¿Confirmás tu asistencia?',
+          type: 'yes_no',
+          required: true,
+        },
+        {
+          id: 'q_adultos',
+          title: 'Cantidad de adultos',
+          type: 'integer_quantity',
+          required: true,
+          minQuantity: 0,
+          condition: {
+            dependsOnQuestionId: 'q_asiste',
+            operator: 'equals',
+            value: 'yes',
+          },
+        },
+        {
+          id: 'q_ninos',
+          title: 'Cantidad de niños',
+          type: 'integer_quantity',
+          required: true,
+          minQuantity: 0,
+          condition: {
+            dependsOnQuestionId: 'q_asiste',
+            operator: 'equals',
+            value: 'yes',
+          },
+        },
+        {
+          id: 'q_restricciones',
+          title: 'Restricciones alimentarias',
+          type: 'open_text',
+          required: false,
+          condition: {
+            dependsOnQuestionId: 'q_asiste',
+            operator: 'equals',
+            value: 'yes',
+          },
+        },
+        {
+          id: 'q_motivo',
+          title: 'Motivo de inasistencia',
+          type: 'open_text',
+          required: true,
+          condition: {
+            dependsOnQuestionId: 'q_asiste',
+            operator: 'equals',
+            value: 'no',
+          },
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      memoryStore.set(
+        'workspaces/ws_colegio/events/evento_fiesta_2026/stages/stage_convocatoria',
+        JSON.parse(JSON.stringify(compositeStage))
+      );
+    });
+
+    it('debe permitir responder cuando asiste y provee adultos y niños válidos', async () => {
+      const resp = await submitStageResponse(familySession, 'stage_convocatoria', {
+        q_asiste: 'yes',
+        q_adultos: 2,
+        q_ninos: 1,
+        q_restricciones: 'Sin gluten para un menor',
+      });
+
+      expect(resp).toBeDefined();
+      expect(resp.answers.q_asiste).toBe('yes');
+      expect(resp.answers.q_adultos).toBe(2);
+      expect(resp.answers.q_ninos).toBe(1);
+    });
+
+    it('debe exigir cantidad de adultos si respondió que sí asiste', async () => {
+      await expect(
+        submitStageResponse(familySession, 'stage_convocatoria', {
+          q_asiste: 'yes',
+          // falta q_adultos
+          q_ninos: 1,
+        })
+      ).rejects.toThrow('El campo "Cantidad de adultos" es obligatorio.');
+    });
+
+    it('debe rechazar cantidades negativas en campos numéricos', async () => {
+      await expect(
+        submitStageResponse(familySession, 'stage_convocatoria', {
+          q_asiste: 'yes',
+          q_adultos: -2,
+          q_ninos: 1,
+        })
+      ).rejects.toThrow('debe ser un número entero mayor o igual a 0');
+    });
+
+    it('no debe exigir campos de asistencia (adultos/niños) si la familia responde que NO asiste', async () => {
+      // Si q_asiste es 'no', q_adultos y q_ninos no son visibles por su condición.
+      // Pero q_motivo sí es visible y obligatorio.
+      const resp = await submitStageResponse(familySession, 'stage_convocatoria', {
+        q_asiste: 'no',
+        q_motivo: 'Viaje familiar programado previamente',
+      });
+
+      expect(resp).toBeDefined();
+      expect(resp.answers.q_asiste).toBe('no');
+      expect(resp.answers.q_motivo).toBe('Viaje familiar programado previamente');
+      expect(resp.answers.q_adultos).toBeUndefined();
+    });
+
+    it('debe exigir motivo de inasistencia si responde que NO asiste', async () => {
+      await expect(
+        submitStageResponse(familySession, 'stage_convocatoria', {
+          q_asiste: 'no',
+          // Falta q_motivo
+        })
+      ).rejects.toThrow('El campo "Motivo de inasistencia" es obligatorio.');
+    });
+  });
 });
+

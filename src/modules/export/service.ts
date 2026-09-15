@@ -49,33 +49,68 @@ export async function exportEventResponsesCsv(
 
     for (const p of participants) {
       const resp = responsesMap.get(p.id);
-      let answerText = 'Sin responder';
-      if (resp) {
-        if (resp.answers.choice) {
-          const opt = stage.options?.find((o) => o.id === resp.answers.choice);
-          answerText = opt ? opt.label : resp.answers.choice;
-        } else if (resp.answers.choices) {
-          answerText = resp.answers.choices.join('; ');
-        } else if (resp.answers.quantity !== undefined) {
-          answerText = String(resp.answers.quantity);
-        } else if (resp.answers.text) {
-          answerText = resp.answers.text;
+
+      if (stage.questions && stage.questions.length > 0) {
+        for (const q of stage.questions) {
+          if (q.type === 'info') continue;
+          let answerText = 'Sin responder';
+          if (resp && resp.answers?.[q.id] !== undefined && resp.answers?.[q.id] !== null && resp.answers?.[q.id] !== '') {
+            const val = resp.answers[q.id];
+            if (q.type === 'yes_no') {
+              answerText = val === 'yes' ? 'Sí' : val === 'no' ? 'No' : String(val);
+            } else if (q.type === 'single_choice') {
+              const opt = q.options?.find((o) => o.id === val);
+              answerText = opt ? opt.label : String(val);
+            } else if (q.type === 'multiple_choice' && Array.isArray(val)) {
+              const labels = val.map((c) => q.options?.find((o) => o.id === c)?.label || c);
+              answerText = labels.join('; ');
+            } else {
+              answerText = String(val);
+            }
+          }
+
+          const row = [escapeCsv(p.familyName)];
+          if (hasClassCode) {
+            row.push(escapeCsv(p.classCode || ''));
+          }
+          row.push(
+            escapeCsv(`${stage.title} - ${q.title}`),
+            escapeCsv(q.type),
+            escapeCsv(answerText),
+            escapeCsv(resp?.updatedAt || resp?.submittedAt || ''),
+            escapeCsv(resp?.version || '')
+          );
+          rows.push(row.join(','));
         }
-      }
+      } else {
+        let answerText = 'Sin responder';
+        if (resp) {
+          if (resp.answers.choice) {
+            const opt = stage.options?.find((o) => o.id === resp.answers.choice);
+            answerText = opt ? opt.label : resp.answers.choice;
+          } else if (resp.answers.choices) {
+            answerText = resp.answers.choices.join('; ');
+          } else if (resp.answers.quantity !== undefined) {
+            answerText = String(resp.answers.quantity);
+          } else if (resp.answers.text) {
+            answerText = resp.answers.text;
+          }
+        }
 
-      const row = [escapeCsv(p.familyName)];
-      if (hasClassCode) {
-        row.push(escapeCsv(p.classCode || ''));
-      }
-      row.push(
-        escapeCsv(stage.title),
-        escapeCsv(stage.type),
-        escapeCsv(answerText),
-        escapeCsv(resp?.updatedAt || resp?.submittedAt || ''),
-        escapeCsv(resp?.version || '')
-      );
+        const row = [escapeCsv(p.familyName)];
+        if (hasClassCode) {
+          row.push(escapeCsv(p.classCode || ''));
+        }
+        row.push(
+          escapeCsv(stage.title),
+          escapeCsv(stage.type),
+          escapeCsv(answerText),
+          escapeCsv(resp?.updatedAt || resp?.submittedAt || ''),
+          escapeCsv(resp?.version || '')
+        );
 
-      rows.push(row.join(','));
+        rows.push(row.join(','));
+      }
     }
   }
 

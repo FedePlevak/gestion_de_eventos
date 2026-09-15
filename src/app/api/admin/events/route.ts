@@ -84,13 +84,21 @@ export async function POST(request: NextRequest) {
     const newEventDoc = eventsRef.doc();
     const now = new Date().toISOString();
 
+    let parsedEventDate: string | null = null;
+    if (eventDate && typeof eventDate === 'string' && eventDate.trim()) {
+      const parsed = new Date(eventDate.trim());
+      if (!isNaN(parsed.getTime())) {
+        parsedEventDate = parsed.toISOString();
+      }
+    }
+
     const eventData = {
       id: newEventDoc.id,
       workspaceId,
       name: name.trim(),
       description: description?.trim() || '',
       timezone: 'America/Montevideo',
-      eventDate: eventDate ? new Date(eventDate).toISOString() : null,
+      eventDate: parsedEventDate,
       status: 'active',
       isArchived: false,
       paymentConfig: {

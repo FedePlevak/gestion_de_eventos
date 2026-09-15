@@ -60,7 +60,120 @@ export async function GET(
     const totalResponded = responses.length;
     const totalRead = reads.length;
 
-    // Mapear breakdown por opción
+    // Si la etapa contiene preguntas estructuradas (compuesta)
+    const questionsBreakdown: any[] = [];
+    if (stage.questions && stage.questions.length > 0) {
+      for (const q of stage.questions) {
+        if (q.type === 'info') continue;
+
+        if (q.type === 'yes_no') {
+          let yesCount = 0;
+          let noCount = 0;
+          const yesFamilies: string[] = [];
+          const noFamilies: string[] = [];
+          for (const r of responses) {
+            const val = r.answers?.[q.id];
+            if (val === 'yes') {
+              yesCount++;
+              yesFamilies.push(r.familyName);
+            } else if (val === 'no') {
+              noCount++;
+              noFamilies.push(r.familyName);
+            }
+          }
+          const totalValid = yesCount + noCount;
+          questionsBreakdown.push({
+            questionId: q.id,
+            title: q.title,
+            type: q.type,
+            options: [
+              { optionId: 'yes', label: 'Sí', count: yesCount, percentage: totalValid > 0 ? Math.round((yesCount / totalValid) * 100) : 0, familyNames: yesFamilies },
+              { optionId: 'no', label: 'No', count: noCount, percentage: totalValid > 0 ? Math.round((noCount / totalValid) * 100) : 0, familyNames: noFamilies },
+            ],
+          });
+        } else if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+          const optMap = new Map<string, { count: number; familyNames: string[] }>();
+          for (const opt of q.options || []) {
+            optMap.set(opt.id, { count: 0, familyNames: [] });
+          }
+          for (const r of responses) {
+            const val = r.answers?.[q.id];
+            if (q.type === 'single_choice' && typeof val === 'string') {
+              const entry = optMap.get(val);
+              if (entry) {
+                entry.count++;
+                entry.familyNames.push(r.familyName);
+              }
+            } else if (q.type === 'multiple_choice' && Array.isArray(val)) {
+              for (const c of val) {
+                const entry = optMap.get(c);
+                if (entry) {
+                  entry.count++;
+                  entry.familyNames.push(r.familyName);
+                }
+              }
+            }
+          }
+          const optionsList = (q.options || []).map((opt) => {
+            const entry = optMap.get(opt.id) || { count: 0, familyNames: [] };
+            const pct = totalResponded > 0 ? Math.round((entry.count / totalResponded) * 100) : 0;
+            return {
+              optionId: opt.id,
+              label: opt.label,
+              count: entry.count,
+              percentage: pct,
+              familyNames: entry.familyNames,
+            };
+          });
+          questionsBreakdown.push({
+            questionId: q.id,
+            title: q.title,
+            type: q.type,
+            options: optionsList,
+          });
+        } else if (q.type === 'integer_quantity') {
+          let sum = 0;
+          let count = 0;
+          const entries: Array<{ familyName: string; quantity: number }> = [];
+          for (const r of responses) {
+            const val = r.answers?.[q.id];
+            if (val !== undefined && val !== null && val !== '') {
+              const num = Number(val);
+              if (!isNaN(num)) {
+                sum += num;
+                count++;
+                entries.push({ familyName: r.familyName, quantity: num });
+              }
+            }
+          }
+          questionsBreakdown.push({
+            questionId: q.id,
+            title: q.title,
+            type: q.type,
+            totalSum: sum,
+            average: count > 0 ? (sum / count).toFixed(1) : 0,
+            respondedCount: count,
+            entries,
+          });
+        } else if (q.type === 'open_text') {
+          const textEntries: Array<{ familyName: string; text: string }> = [];
+          for (const r of responses) {
+            const val = r.answers?.[q.id];
+            if (val && typeof val === 'string' && val.trim()) {
+              textEntries.push({ familyName: r.familyName, text: val.trim() });
+            }
+          }
+          questionsBreakdown.push({
+            questionId: q.id,
+            title: q.title,
+            type: q.type,
+            entries: textEntries,
+          });
+        }
+      }
+    }
+
+    // Mapear breakdown por opción para etapas clásicas
     const optionCounts = new Map<string, { count: number; familyNames: string[] }>();
     if (stage.options) {
       for (const opt of stage.options) {
@@ -77,6 +190,7 @@ export async function GET(
       participantId: string;
       familyName: string;
       answersText: string;
+      answersMap?: Record<string, any>;
       submittedAt: string;
       version: number;
     }> = [];
@@ -84,7 +198,28 @@ export async function GET(
     for (const r of responses) {
       respondedParticipantIds.add(r.participantId);
       let answersText = '';
-      if (stage.type === 'single_choice') {
+
+      if (stage.questions && stage.questions.length > 0) {
+        const parts: string[] = [];
+        for (const q of stage.questions) {
+          if (q.type === 'info') continue;
+          const val = r.answers?.[q.id];
+          if (val === undefined || val === null || val === '') continue;
+
+          let displayVal = String(val);
+          if (q.type === 'yes_no') {
+            displayVal = val === 'yes' ? 'Sí' : 'No';
+          } else if (q.type === 'single_choice') {
+            const foundOpt = q.options?.find((o) => o.id === val);
+            displayVal = foundOpt ? foundOpt.label : String(val);
+          } else if (q.type === 'multiple_choice' && Array.isArray(val)) {
+            const labels = val.map((c) => q.options?.find((o) => o.id === c)?.label || c);
+            displayVal = labels.join(', ');
+          }
+          parts.push(`${q.title}: ${displayVal}`);
+        }
+        answersText = parts.join(' • ') || 'Sin respuestas';
+      } else if (stage.type === 'single_choice') {
         const opt = stage.options?.find((o) => o.id === r.answers?.choice);
         answersText = opt?.label || r.answers?.choice || 'Sin selección';
         const entry = optionCounts.get(r.answers?.choice);
@@ -120,6 +255,7 @@ export async function GET(
         participantId: r.participantId,
         familyName: r.familyName,
         answersText,
+        answersMap: r.answers,
         submittedAt: r.submittedAt,
         version: r.version,
       });
@@ -153,6 +289,7 @@ export async function GET(
       totalRead,
       responseRatePercentage: totalEligible > 0 ? Math.round((totalResponded / totalEligible) * 100) : 0,
       breakdown,
+      questionsBreakdown,
       familyResponsesList,
       pendingFamilies,
       readsList: reads.map((rd) => ({

@@ -132,7 +132,14 @@ export async function PATCH(
       updates.description = typeof description === 'string' ? description.trim() : '';
     }
     if (eventDate !== undefined) {
-      updates.eventDate = eventDate ? new Date(eventDate).toISOString() : null;
+      let parsedDate: string | null = null;
+      if (eventDate && typeof eventDate === 'string' && eventDate.trim()) {
+        const d = new Date(eventDate.trim());
+        if (!isNaN(d.getTime())) {
+          parsedDate = d.toISOString();
+        }
+      }
+      updates.eventDate = parsedDate;
     }
 
     if (paymentConfig !== undefined) {
